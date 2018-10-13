@@ -137,7 +137,7 @@ Orion uses a proprietary framing for PTT Media. To decode these messages use the
 
 By connecting the output of the Receive Node to the input of the Decode node, `media` will be decoded to `media_wav`. From there you can use the resulting WAV file as an input to any other node, for example, IBM Watson Speech-to-Text.
 
-![Orion RX->Orion Decode](docs/orion_rx-orion_decode.png)
+![Orion RX->Orion Decode](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_rx-orion_decode.png)
 
 #### Decoded PTT
 
