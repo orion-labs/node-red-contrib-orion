@@ -39,6 +39,8 @@ Encode, Decode and Lookup Nodes act as Transforms, and are intended to be used i
 
 ### Input/Receive (Orion RX)
 
+![Orion RX Node](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_rx.png)
+
 Orion input node, used to receive messages from a specified Orion Group.
 
 Sets the `msg` body to the Event body received from Orion.
