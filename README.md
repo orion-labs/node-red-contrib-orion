@@ -53,22 +53,22 @@ Location.
 
 ```json
 {
-  eventId: "8500fe502a5d4f4aab194c0f1e33ee1f",
-  event_type: "userstatus",
-  presence: "online",
-  muted: false,
-  sender_token_hash: "1f570302db214ad29e75dee16d9e348f",
-  location: {
-    lat: 37.760038,
-    timestamp: 0,
-    lng: -122.497455,
-    accuracy: 0
+  "eventId": "8500fe502a5d4f4aab194c0f1e33ee1f",
+  "event_type": "userstatus",
+  "presence": "online",
+  "muted": false,
+  "sender_token_hash": "1f570302db214ad29e75dee16d9e348f",
+  "location": {
+    "lat": 37.760038,
+    "timestamp": 0,
+    "lng": -122.497455,
+    "accuracy": 0
   },
-  groups: [{
-    group_id: "2f8b4570149f4501b0607c26480778b1",
-    presence: "online"
+  "groups": [{
+    "group_id": "2f8b4570149f4501b0607c26480778b1",
+    "presence": "online"
   }],
-  id: "a16f681a1d0847c685dc6b09eedf62d9"
+  "id": "a16f681a1d0847c685dc6b09eedf62d9"
 }
 ```
 
@@ -88,16 +88,16 @@ is sent as a stream using Orion's proprietary audio framing, but can be easily d
 
 ```json
 {
-  eventId: "49a8f5209e5a4407a485d7c8b73ad42b",
-  event_type: "ptt",
-  ptt_id: "49a8f5209e5a4407a485d7c8b73ad42b",
-  sender_name: "Greg Albrecht",
-  media: "https://alnitak-rx.orionlabs.io/eb510eaa-b0cc-42e8-825a-3d87156bad22.ov",
-  ts: 1539444420.372,
-  sender_token_hash: "d0306f43ae484699869f541742bfc2a1",
-  id: "aeca5b687e424d26bb8663a53590a251",
-  ptt_seqnum: "1539444420.798206",
-  sender: "965377752a494d329fcf0b3101be6b0f"
+  "eventId": "49a8f5209e5a4407a485d7c8b73ad42b",
+  "event_type": "ptt",
+  "ptt_id": "49a8f5209e5a4407a485d7c8b73ad42b",
+  "sender_name": "Greg Albrecht",
+  "media": "https://alnitak-rx.orionlabs.io/eb510eaa-b0cc-42e8-825a-3d87156bad22.ov",
+  "ts": 1539444420.372,
+  "sender_token_hash": "d0306f43ae484699869f541742bfc2a1",
+  "id": "aeca5b687e424d26bb8663a53590a251",
+  "ptt_seqnum": "1539444420.798206",
+  "sender": "965377752a494d329fcf0b3101be6b0f"
 }
 ```
 
@@ -126,8 +126,8 @@ For Example, the following `msg` body will speak the phrase ``Hello World`` to t
 
 ```json
 {
-  group: "01abc",
-  message: "Hello World"
+  "group": "01abc",
+  "message": "Hello World"
 }
 ```
 
@@ -137,23 +137,23 @@ Orion uses a proprietary framing for PTT Media. To decode these messages use the
 
 By connecting the output of the Receive Node to the input of the Decode node, `media` will be decoded to `media_wav`. From there you can use the resulting WAV file as an input to any other node, for example, IBM Watson Speech-to-Text.
 
-![Orion Receive ->Orion Decode Nodes](https://www.dropbox.com/s/raofdc90wpoz8o7/Screenshot%202018-10-13%2008.48.27.pn)
+![Orion RX->Orion Decode](docs/orion_rx-orion_decode.png)
 
 #### Decoded PTT
 
 ```json
 {
-  eventId: "49a8f5209e5a4407a485d7c8b73ad42b",
-  event_type: "ptt",
-  ptt_id: "49a8f5209e5a4407a485d7c8b73ad42b",
-  sender_name: "Greg Albrecht",
-  media: "https://alnitak-rx.orionlabs.io/eb510eaa-b0cc-42e8-825a-3d87156bad22.ov",
-  media_wav: "https://s3-us-west-2.amazonaws.com/locris/tmp_x1q_9pc_locris_out_wav_.wav",
-  ts: 1539444420.372,
-  sender_token_hash: "d0306f43ae484699869f541742bfc2a1",
-  id: "aeca5b687e424d26bb8663a53590a251",
-  ptt_seqnum: "1539444420.798206",
-  sender: "965377752a494d329fcf0b3101be6b0f"
+  "eventId": "49a8f5209e5a4407a485d7c8b73ad42b",
+  "event_type": "ptt",
+  "ptt_id": "49a8f5209e5a4407a485d7c8b73ad42b",
+  "sender_name": "Greg Albrecht",
+  "media": "https://alnitak-rx.orionlabs.io/eb510eaa-b0cc-42e8-825a-3d87156bad22.ov",
+  "media_wav": "https://s3-us-west-2.amazonaws.com/locris/tmp_x1q_9pc_locris_out_wav_.wav",
+  "ts": 1539444420.372,
+  "sender_token_hash": "d0306f43ae484699869f541742bfc2a1",
+  "id": "aeca5b687e424d26bb8663a53590a251",
+  "ptt_seqnum": "1539444420.798206",
+  "sender": "965377752a494d329fcf0b3101be6b0f"
 }
 ```
 
@@ -173,14 +173,14 @@ For example, the following `msg` will encode the file at the URL specified with 
 Input `msg`:
 ```json
 {
-  media_wav: "https://example.com/hello_world.wav"
+  "media_wav": "https://example.com/hello_world.wav"
 }
 ```
 Output `msg`:
 ```json
 {
-  media_wav: "https://example.com/hello_world.wav",
-  media: "https://example.orionlabs.io/hello_world.ov"
+  "media_wav": "https://example.com/hello_world.wav",
+  "media": "https://example.orionlabs.io/hello_world.ov"
 }
 
 ```
