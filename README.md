@@ -111,6 +111,8 @@ Fields are as follows:
 
 ### Output/Transmit (Orion TX)
 
+![Orion TX Node](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_tx.png)
+
 Orion Output Node, used to send messages to a specified Orion Group or User.
 
 Required Parameters
