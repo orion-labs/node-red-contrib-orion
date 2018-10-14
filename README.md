@@ -219,6 +219,10 @@ The following flow allows one group to receive transmissions from other groups -
 
 ### Listen to a Group in-browser
 
+The following flow plays PTT audio messages in the browser.
+
+![Playing PTTs in Browser](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-browser_play.png)
+
 ```json
 [{"id":"9210cf9e.9df92","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"fc95227d.1462c","x":90,"y":400,"wires":[["cd54d733.303428","ae4c797d.839908"]]},{"id":"cd54d733.303428","type":"orion_tx","z":"43dbbc8.6699844","name":"Group B TX","orion_config":"fc95227d.1462c","x":270,"y":400,"wires":[]},{"id":"ae4c797d.839908","type":"orion_tx","z":"43dbbc8.6699844","name":"Group C TX","orion_config":"fc95227d.1462c","x":270,"y":440,"wires":[]},{"id":"fc95227d.1462c","type":"orion_config","z":"","group":"1","name":"NOOP"}]
 ```
