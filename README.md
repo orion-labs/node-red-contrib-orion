@@ -189,6 +189,51 @@ Output `msg`:
 
 ## Example Flows
 
+### 2-Way Group Bridge
+
+The following flow 'bridges' or 'patches' two Orion groups together so that
+transmissions from one group are re-transmitted to another group, and
+vice-versa.
+
+![Two Orion Groups Bridged](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-2way_bridge.png)
+
+```json
+[{"id":"fcdb7143.5c244","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"fc95227d.1462c","x":90,"y":80,"wires":[["7748fadc.f08b74"]]},{"id":"7748fadc.f08b74","type":"orion_tx","z":"43dbbc8.6699844","name":"Group B TX","orion_config":"fc95227d.1462c","x":270,"y":80,"wires":[]},{"id":"94e3616d.0bc3e","type":"orion_tx","z":"43dbbc8.6699844","name":"Group A TX","orion_config":"fc95227d.1462c","x":270,"y":120,"wires":[]},{"id":"17f0f537.c1f2db","type":"orion_rx","z":"43dbbc8.6699844","name":"Group B RX","orion_config":"fc95227d.1462c","x":90,"y":120,"wires":[["94e3616d.0bc3e"]]},{"id":"fc95227d.1462c","type":"orion_config","z":"","group":"1","name":"NOOP"}]
+```
+
+### Multi-group Receive
+
+The following flow allows one group to receive transmissions from other groups - this is similar to 'scanning' multiple other groups.
+
+![Orion Group Receiving Transmissions from 2 other groups](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-scan.png)
+
+```json
+[{"id":"9be2a9f4.d1e518","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"fc95227d.1462c","x":90,"y":240,"wires":[["1b343e95.f243f1"]]},{"id":"1b343e95.f243f1","type":"orion_tx","z":"43dbbc8.6699844","name":"Group C TX","orion_config":"fc95227d.1462c","x":270,"y":240,"wires":[]},{"id":"93480bd2.04a058","type":"orion_rx","z":"43dbbc8.6699844","name":"Group B RX","orion_config":"fc95227d.1462c","x":90,"y":280,"wires":[["1b343e95.f243f1"]]},{"id":"fc95227d.1462c","type":"orion_config","z":"","group":"1","name":"NOOP"}]
+```
+
+### Multi-Group Transmit
+
+```json
+[{"id":"9210cf9e.9df92","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"fc95227d.1462c","x":90,"y":400,"wires":[["cd54d733.303428","ae4c797d.839908"]]},{"id":"cd54d733.303428","type":"orion_tx","z":"43dbbc8.6699844","name":"Group B TX","orion_config":"fc95227d.1462c","x":270,"y":400,"wires":[]},{"id":"ae4c797d.839908","type":"orion_tx","z":"43dbbc8.6699844","name":"Group C TX","orion_config":"fc95227d.1462c","x":270,"y":440,"wires":[]},{"id":"fc95227d.1462c","type":"orion_config","z":"","group":"1","name":"NOOP"}]
+```
+
+### Listen to a Group in-browser
+
+```json
+[{"id":"9210cf9e.9df92","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"fc95227d.1462c","x":90,"y":400,"wires":[["cd54d733.303428","ae4c797d.839908"]]},{"id":"cd54d733.303428","type":"orion_tx","z":"43dbbc8.6699844","name":"Group B TX","orion_config":"fc95227d.1462c","x":270,"y":400,"wires":[]},{"id":"ae4c797d.839908","type":"orion_tx","z":"43dbbc8.6699844","name":"Group C TX","orion_config":"fc95227d.1462c","x":270,"y":440,"wires":[]},{"id":"fc95227d.1462c","type":"orion_config","z":"","group":"1","name":"NOOP"}]
+```
+
+### SMS To Orion
+
+The following flow receives SMS from Twilio and speaks the message into
+an Orion group.
+
+![SMS to Orion](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-sms2orion.png)
+
+```json
+[{"id":"9210cf9e.9df92","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"fc95227d.1462c","x":90,"y":400,"wires":[["cd54d733.303428","ae4c797d.839908"]]},{"id":"cd54d733.303428","type":"orion_tx","z":"43dbbc8.6699844","name":"Group B TX","orion_config":"fc95227d.1462c","x":270,"y":400,"wires":[]},{"id":"ae4c797d.839908","type":"orion_tx","z":"43dbbc8.6699844","name":"Group C TX","orion_config":"fc95227d.1462c","x":270,"y":440,"wires":[]},{"id":"fc95227d.1462c","type":"orion_config","z":"","group":"1","name":"NOOP"}]
+```
+
 # Support
 
 For help with this or other Orion products, please contact Orion Support at [support@orionlabs.io](mailto:support@orionlabs.io?subject=node-red-contrib-orion)
