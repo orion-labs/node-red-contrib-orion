@@ -1,4 +1,4 @@
-![Orion App Logo](https://github.com/orion-labs/node-red-contrib-orion/raw/master/icons/orion_trapezium.png)
+![Orion App Logo](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/app_icon.png)
 
 node-red-contrib-orion
 ======================
