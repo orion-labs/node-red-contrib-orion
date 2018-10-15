@@ -189,58 +189,10 @@ Output `msg`:
 
 ```
 
-## Example Flows
+# Examples
 
-### 2-Way Group Bridge
+See <a href="examples/">examples/</a> for many examples!
 
-The following flow 'bridges' or 'patches' two Orion groups together so that
-transmissions from one group are re-transmitted to another group, and
-vice-versa.
-
-![Two Orion Groups Bridged](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-2way_bridge.png)
-
-```json
-[{"id":"fcdb7143.5c244","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"","x":90,"y":80,"wires":[["7748fadc.f08b74"]]},{"id":"7748fadc.f08b74","type":"orion_tx","z":"43dbbc8.6699844","name":"Group B TX","orion_config":"","x":270,"y":80,"wires":[]},{"id":"94e3616d.0bc3e","type":"orion_tx","z":"43dbbc8.6699844","name":"Group A TX","orion_config":"","x":270,"y":120,"wires":[]},{"id":"17f0f537.c1f2db","type":"orion_rx","z":"43dbbc8.6699844","name":"Group B RX","orion_config":"","x":90,"y":120,"wires":[["94e3616d.0bc3e"]]}]
-```
-
-### Multi-Group Receive
-
-The following flow allows one group to receive transmissions from other groups - this is similar to 'scanning' multiple other groups.
-
-![Orion Group Receiving Transmissions from 2 other groups](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-scan.png)
-
-```json
-[{"id":"9be2a9f4.d1e518","type":"orion_rx","z":"43dbbc8.6699844","name":"Group A RX","orion_config":"","x":90,"y":240,"wires":[["1b343e95.f243f1"]]},{"id":"1b343e95.f243f1","type":"orion_tx","z":"43dbbc8.6699844","name":"Group C TX","orion_config":"","x":270,"y":240,"wires":[]},{"id":"93480bd2.04a058","type":"orion_rx","z":"43dbbc8.6699844","name":"Group B RX","orion_config":"","x":90,"y":280,"wires":[["1b343e95.f243f1"]]}]
-```
-
-### Multi-Group Transmit
-
-![Orion group transmitting to multi other groups](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-all_call.png)
-
-```json
-[{"id":"7079bb58.35dcd4","type":"orion_rx","z":"7ec1616e.0e3e2","name":"Group A RX","orion_config":"","x":610,"y":300,"wires":[["53ee37f7.041a08","8f185157.2f1f4"]]},{"id":"53ee37f7.041a08","type":"orion_tx","z":"7ec1616e.0e3e2","name":"Group B TX","orion_config":"","x":790,"y":300,"wires":[]},{"id":"8f185157.2f1f4","type":"orion_tx","z":"7ec1616e.0e3e2","name":"Group C TX","orion_config":"","x":790,"y":340,"wires":[]}]
-```
-
-### Listen to a Group in-browser
-
-The following flow plays PTT audio messages in the browser.
-
-![Playing PTTs in Browser](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-browser_play.png)
-
-```json
-[{"id":"7fee8343.1b74dc","type":"orion_rx","z":"43dbbc8.6699844","name":"Group RX","orion_config":"","x":80,"y":560,"wires":[["906e5a3c.573af8"]]},{"id":"906e5a3c.573af8","type":"orion_decode","z":"43dbbc8.6699844","name":"","x":260,"y":560,"wires":[["790dbd12.238254"]]},{"id":"79a5c028.08cf7","type":"play audio","z":"43dbbc8.6699844","name":"","voice":"","x":810,"y":560,"wires":[]},{"id":"6db772e2.dc9cec","type":"http request","z":"43dbbc8.6699844","name":"GET Media","method":"GET","ret":"bin","url":"","tls":"","x":630,"y":560,"wires":[["79a5c028.08cf7"]]},{"id":"790dbd12.238254","type":"change","z":"43dbbc8.6699844","name":"","rules":[{"t":"set","p":"url","pt":"msg","to":"media_wav","tot":"msg"}],"action":"","property":"","from":"","to":"","reg":false,"x":450,"y":560,"wires":[["6db772e2.dc9cec"]]}]
-```
-
-### SMS To Orion
-
-The following flow receives SMS from Twilio and speaks the message into
-an Orion group.
-
-![SMS to Orion](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/example-sms2orion.png)
-
-```json
-[{"id":"23bb0e23.bf3532","type":"change","z":"43dbbc8.6699844","name":"","rules":[{"t":"set","p":"message","pt":"msg","to":"payload.Body","tot":"msg"}],"action":"","property":"","from":"","to":"","reg":false,"x":350,"y":680,"wires":[["2e7a597e.38ffa6"]]},{"id":"b68c9f69.7b9a8","type":"http in","z":"43dbbc8.6699844","name":"Twilio POST Endpoint","url":"/example_incoming_sms_endpoint","method":"post","upload":false,"swaggerDoc":"","x":120,"y":680,"wires":[["a4c126b2.b0c208","23bb0e23.bf3532"]]},{"id":"a4c126b2.b0c208","type":"http response","z":"43dbbc8.6699844","name":"","statusCode":"201","headers":{},"x":320,"y":720,"wires":[]},{"id":"2e7a597e.38ffa6","type":"orion_tx","z":"43dbbc8.6699844","name":"Group TX","orion_config":"","x":540,"y":680,"wires":[]}]
-```
 
 # Support
 
