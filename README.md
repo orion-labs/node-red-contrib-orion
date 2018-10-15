@@ -1,3 +1,5 @@
+![Orion App Logo](https://github.com/orion-labs/node-red-contrib-orion/raw/master/icons/orion_trapezium.png)
+
 node-red-contrib-orion
 ======================
 
@@ -13,7 +15,7 @@ In addition to speaking to people, users can speak to 'things'. Using Orion's
 Voice Superpowers users can build Bots that respond to voice commands, user
 actions, and other knowledge about the user's state (location, geo-fencing, etc).
 
-Orion truly is Push-to-Talk with SUPERPOWERS!
+Orion is Push-to-Talk with SUPERPOWERS!
 
 Install
 -------
@@ -33,9 +35,12 @@ Before using these Nodes, you should sign-up for an Orion account using the
 Usage
 -----
 
-Provides several nodes for receiving, transmitting, decoding & encoding messages, as well as a node for retrieving user & group info from Orion.
+Provides several nodes for receiving, transmitting, decoding & encoding
+messages, as well as a node for retrieving user & group info from Orion.
 
-Encode, Decode and Lookup Nodes act as Transforms, and are intended to be used in-line (or piped) between Terminal Nodes. That is, they'll accept input `msg`s, and append new fields to the `msg` on output.
+Encode, Decode and Lookup Nodes act as Transforms, and are intended to be used
+in-line (or piped) between Terminal Nodes. That is, they'll accept input
+`msg`s, and append new fields to the `msg` on output.
 
 ### Input/Receive (Orion RX)
 
@@ -45,13 +50,14 @@ Orion input node, used to receive messages from a specified Orion Group.
 
 Sets the `msg` body to the Event body received from Orion.
 
-There are several Event Types, but the two significant ones are 'User Status' and 'PTT'.
+There are several Event Types, but the two significant ones are 'User Status'
+and 'PTT'.
 
 #### User Status Event
 
-Orion clients periodically send User Status updates to other users within a Group. This allows group
-members to see each other's Presence (online or offline), Muted State (muted or not), and if available,
-Location.
+Orion clients periodically send User Status updates to other users within a
+Group. This allows group members to see each other's Presence (online or
+  offline), Muted State (muted or not), and if available, Location.
 
 ```json
 {
@@ -85,8 +91,9 @@ Fields are as follows:
 
 #### PTT (Push-to-Talk) Event
 
-Orion clients can transmit audio messages to a Group, or directly to a user within a Group. Audio Media
-is sent as a stream using Orion's proprietary audio framing, but can be easily decoded using the Decoding Node.
+Orion clients can transmit audio messages to a Group, or directly to a user
+within a Group. Audio Media is sent as a stream using Orion's proprietary
+audio framing, but can be easily decoded using the Decoding Node.
 
 ```json
 {
@@ -125,7 +132,8 @@ Transmission Sources
 - `message`: Text message to convert to Speech and transmit.
 - `media`: WAV file to transmit.
 
-For Example, the following `msg` body will speak the phrase ``Hello World`` to the group ``01abc``:
+For Example, the following `msg` body will speak the phrase ``Hello World``
+to the group ``01abc``:
 
 
 ```json
@@ -137,9 +145,12 @@ For Example, the following `msg` body will speak the phrase ``Hello World`` to t
 
 ### Decoding Audio (Orion Decode)
 
-Orion uses a proprietary framing for PTT Media. To decode these messages use the **Orion Decode** node.
+Orion uses a proprietary framing for PTT Media. To decode these messages use
+the **Orion Decode** node.
 
-By connecting the output of the Receive Node to the input of the Decode node, `media` will be decoded to `media_wav`. From there you can use the resulting WAV file as an input to any other node, for example, IBM Watson Speech-to-Text.
+By connecting the output of the Receive Node to the input of the Decode node,
+`media` will be decoded to `media_wav`. From there you can use the resulting
+WAV file as an input to any other node, for example, IBM Watson Speech-to-Text.
 
 ![Orion RX->Orion Decode](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_rx-orion_decode.png)
 
@@ -172,7 +183,9 @@ Parameters:
 - `media_wav`: URL to WAV file to encode.
 - `media_buf`: Binary Buffer containing WAV data to encode.
 
-For example, the following `msg` will encode the file at the URL specified with `media_wav` to Orion's Audio Format, and return the resulting file at the URL specified by `media`:
+For example, the following `msg` will encode the file at the URL specified
+with `media_wav` to Orion's Audio Format, and return the resulting file at
+the URL specified by `media`:
 
 Input `msg`:
 ```json
@@ -200,7 +213,7 @@ For help with this or other Orion products, please contact Orion Support at [sup
 
 # Copyright & License
 
-Copyright 2018  Orion Labs, Inc.
+Copyright 2018 Orion Labs, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

@@ -1,5 +1,5 @@
 node-red-contrib-orion Examples
-======================---------
+===============================
 
 This directory contains many examples using Orion Node-RED nodes.
 
