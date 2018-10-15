@@ -1,4 +1,17 @@
-![Orion App Logo](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/app_icon.png =128x128) + ![Node-RED Logo](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/node-red-icon-2.png =128x128)
+<a href="https://orionlabs.io" target="_new"><img
+  src="https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/app_icon.png"
+  alt="Orion App Logo"
+  width="128"
+  height="128"
+/></a>
+<b>+</b>
+<a href="https://nodered.org" target="_new"><img
+  src="https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/node-red-icon-2.png"
+  alt="Node-RED Logo"
+  width="128"
+  height="128"
+/></a>
+
 
 node-red-contrib-orion
 ======================
