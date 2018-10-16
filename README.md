@@ -55,6 +55,20 @@ Encode, Decode and Lookup Nodes act as Transforms, and are intended to be used
 in-line (or piped) between Terminal Nodes. That is, they'll accept input
 `msg`s, and append new fields to the `msg` on output.
 
+### Configure
+
+For **Orion RX**, **Orion TX**, and **Orion Lookup** Nodes, you'll need to
+create at least one **Orion Config** configuration. When you first add one of
+these Nodes to a Flow, you'll see that the config is blank:
+
+![Unconfigured Node](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/unconfigured_node.png)
+
+Click the Edit/Pencil next to *Add new orion_config...* and enter your Orion
+Login and Group information, then click *Save*:
+
+![New Configuration](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/new_config.png)
+
+
 ### Input/Receive (Orion RX)
 
 ![Orion RX Node](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_rx.png)
