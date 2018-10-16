@@ -30,6 +30,19 @@ actions, and other knowledge about the user's state (location, geo-fencing, etc)
 
 Orion is Push-to-Talk with SUPERPOWERS!
 
+Orion Aster
+-----------
+
+The Open Source **node-red-contrib-orion** Project is intended for use by
+developers and end-users who intent to install and run their own Node-RED
+instance.
+
+For Orion Pro users, Orion offers *Aster*, a hosted version of Node-RED with
+**node-red-contrib-orion** pre-installed. For more information please contact
+<a href="mailto:sales@orionlabs.io?subject=aster">Orion Sales</a>.
+
+![Orion Aster](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion-aster.png)
+
 Install
 -------
 
