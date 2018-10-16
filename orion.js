@@ -309,6 +309,7 @@ module.exports = function (RED) {
                     });
                 } else {
                     this.token = body.token;
+                    this.id = body.id;
                 }
 
                 if (!this.token) {
@@ -325,6 +326,7 @@ module.exports = function (RED) {
                         method: 'POST',
                         json: {
                             'token': this.token,
+                            'user_id': this.id,
                             'msg': msg
                         }
                     },

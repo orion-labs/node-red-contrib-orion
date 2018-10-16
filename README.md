@@ -86,7 +86,7 @@ and 'PTT'.
 Orion Output Node, used to send Events to a specified Orion Group or User.
 
 
-### Decoding Audio (Orion Decode)
+### Decoding Orion Audio (Orion Decode)
 
 Orion uses a proprietary framing for PTT Media. To decode these messages use
 the **Orion Decode** node.
@@ -98,10 +98,15 @@ WAV file as an input to any other node, for example, IBM Watson Speech-to-Text.
 ![Orion RX->Orion Decode](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_rx-orion_decode.png)
 
 
-### Encoding Audio (Orion Encode)
+### Encoding Orion Audio (Orion Encode)
 
 Input & Output Node for encoding WAV to Orion's Audio format. Supports encoding
 either a binary buffer or a file at a specified URL.
+
+
+### Looking Up Users & Groups (Orion Lookup)
+
+Input & Output Node for looking-up Orion User & Group information.
 
 
 # Examples
