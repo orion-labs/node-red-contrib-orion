@@ -1,0 +1,443 @@
+<!--
+
+Author:: Greg Albrecht <gba@orionlabs.io>
+Copyright:: Copyright 2018 Orion Labs, Inc.
+License:: Apache License, Version 2.0
+Source:: https://github.com/orion-labs/node-red-contrib-orion
+
+-->
+
+<!-- START orion_config -->
+
+<script type="text/x-red" data-template-name="orion_config">
+  <div class="form-row">
+    <label for="node-config-input-username"><i class="icon-bookmark"></i> Username</label>
+    <input type='text' id="node-config-input-username">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-password"><i class="icon-bookmark"></i> Password</label>
+    <input type='password' id="node-config-input-password">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-group"><i class="icon-bookmark"></i> Group</label>
+    <input type='text' id="node-config-input-group">
+  </div>
+  <div class="form-row">
+      <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+      <input type="text" id="node-config-input-name" placeholder="Name">
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_config">
+    <p>Authentication for the Orion API</p>
+    <p>Requires a username, password and default group.</p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_config', {
+        category: 'config',
+        defaults: {
+            group: { value: '', required: true },
+            name: { value: '', required: false }
+        },
+        credentials: {
+            username: { type: 'text' },
+            password: { type: 'password' }
+        },
+        label: function () {
+            return this.name || this.credentials.username + '@' + this.group;
+        },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+    });
+</script>
+
+<!-- END orion_config -->
+
+
+<!-- START orion_rx -->
+
+<script type="text/x-red" data-template-name="orion_rx">
+  <div class="form-row">
+    <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
+    <input type='text' id="node-input-orion_config">
+  </div>
+  <div class="form-row">
+      <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="Name">
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_rx">
+  <p>
+    Orion Input (Receive) Node. Will receive Events from the Orion Event Stream:
+    <ul>
+      <li>Push-To-Talk (PTT)</li>
+      <li>User Status</li>
+    </ul>
+  </p>
+
+  <h3>Outputs</h3>
+
+  <h4>Push-To-Talk Events</h4>
+  <dl class="message-properties">
+
+    <dt>event_type <span class="property-type">string</span></dt>
+    <dd>
+      Type of Event received. (<code>ptt</code>)
+    </dd>
+
+    <dt>sender <span class="property-type">string</span></dt>
+    <dd>UID of User transmitting this Event.</dd>
+
+    <dt>sender_name <span class="property-type">string</span></dt>
+    <dd>Name of User transmitting this event.</dd>
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to audio stream being transmitted.</dd>
+
+  </dl>
+
+  <h4>User Status Events</h4>
+  <dl class="message-properties">
+
+    <dt>event_type <span class="property-type">string</span></dt>
+    <dd>
+      Type of Event received. (<code>userstatus</code>)
+    </dd>
+
+    <dt>id <span class="property-type">string</span></dt>
+    <dd>UID of User for whom the User Status event represents.</dd>
+
+    <dt>location <span class="property-type">object</span></dt>
+    <dd>
+      <code>lat, lng, alt</code> & <code>accuracy</code> of User's location, if
+      available.
+    </dd>
+
+    <dt>presence <span class="property-type">string</span></dt>
+    <dd>User's state: <code>online</code> or <code>offline</code>.</dd>
+
+    <dt>muted <span class="property-type">bool</span></dt>
+    <dd>User's audio state if they have a device that supports muting.</dd>
+
+    <dt>groups <span class="property-type">array</span></dt>
+    <dd>User's state in each Group.</dd>
+
+  </dl>
+
+  <h3>Details</h3>
+    <p>Orion Push-To-Talk uses a custom audio encoding. Use the <b>Orion Decode</b>
+    as an in-line transform to conver Orion Audio Encoding to WAV.</p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_rx', {
+        category: 'social',
+        defaults: {
+            name: { value: '' },
+            orion_config: { value: '', type: 'orion_config' },
+        },
+        color: '#0099ff',
+        inputs: 0,
+        outputs: 1,
+        icon: 'orion_trapezium.png',
+        label: function () {
+            var level_node = RED.nodes.node(this.orion_config);
+            return this.name || (level_node ? level_node.label() : 'Orion RX');
+        },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+      }
+    )
+</script>
+
+<!-- END orion_rx -->
+
+
+<!-- START orion_tx -->
+
+
+<script type="text/x-red" data-template-name="orion_tx">
+  <div class="form-row">
+    <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
+    <input type='text' id="node-input-orion_config">
+  </div>
+  <div class="form-row">
+      <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="Name">
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_tx">
+  <p>
+    Orion Output (Transmit) Node. Will transmit Push-To-Talk Events to the
+    Orion Event Stream.
+  </p>
+
+  <h3>Inputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>group <span class="property-type">string</span></dt>
+    <dd>
+      Group ID to send messages to (group/broadcast).
+    </dd>
+
+    <dt>target <span class="property-type">string</span></dt>
+    <dd>UID User ID to transmit messages to (one-on-one).</dd>
+
+    <dt>message <span class="property-type">string</span></dt>
+    <dd>Text message to convert to speech and transmit.</dd>
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to audio stream to transmit.</dd>
+
+  </dl>
+
+  <h3>Details</h3>
+  <p>The <b>Orion TX</b> node works in several modes:</p>
+
+  <h4>Destination Modes</h4>
+  <ul>
+    <li><em>Group</em> Mode: Set <code>group</code> to Group ID to transmit message
+    to. This is default operation for Orion Push-To-Talk.</li>
+    <li><em>Target</em> Mode: Set <code>target</code> to User ID (UID) to transmit
+    message to. This is also called 'one-to-one'. Users must be in the same
+    Group and <code>group</code> must be set to that group.
+    </li>
+  </ul>
+
+  <h4>Message Modes</h4>
+  <ul>
+    <li><em>Speech-To-Text</em> Mode: Set <code>message</code> to a text message to
+    convert to speech and transmit.</li>
+    <li><em>Media</em> Mode: Set <code>media</code> to a URL to transmit. Media must
+    be in Orion Audio Format. Use the <b>Orion Encode</b> node to encode WAV.
+    </li>
+  </ul>
+
+    <p>Orion Push-To-Talk uses a custom audio encoding. Use the <b>Orion Encode</b>
+    as an in-line transform to convert WAV to Orion Audio Encoding.</p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_tx', {
+        category: 'social',
+        defaults: {
+            name: { value: '' },
+            orion_config: { value: '', type: 'orion_config' },
+        },
+        color: '#0099ff',
+        inputs: 1,
+        outputs: 0,
+        icon: 'orion_trapezium.png',
+        label: function () {
+            var level_node = RED.nodes.node(this.orion_config);
+            return this.name || (level_node ? level_node.label() : 'Orion TX');
+        },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+      }
+    )
+</script>
+
+<!-- END orion_tx -->
+
+
+<!-- START orion_decode -->
+
+<script type="text/x-red" data-template-name="orion_decode">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_decode">
+  <p>Orion Decode Node. Decodes Orion Audio to WAV.</p>
+
+  <h3>Inputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to Orion Audio to decode to WAV.</dd>
+
+  </dl>
+
+  <h3>Outputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media_wav <span class="property-type">string</span></dt>
+    <dd>URL to Orion Audio file after decoding to WAV.</dd>
+
+  </dl>
+
+  <h3>Details</h3>
+  <p>This Node is intended to be used as a Transform. That is, place this Node
+  in-line and it will append <code>media_wav</code> to the existing <code>msg</code>
+  object.
+  </p>
+
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_decode', {
+        category: 'social',
+        color: '#0099ff',
+        defaults: { name: { value: '' } },
+        inputs:1,
+        outputs:1,
+        icon: 'orion_trapezium.png',
+        label: function () { return this.name || 'Orion Decode'; },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+    });
+</script>
+
+<!-- END orion_decode -->
+
+
+<!-- START orion_decode -->
+
+<script type="text/x-red" data-template-name="orion_encode">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_encode">
+  <p>Orion Encode Node. Encodes WAV to Orion Audio Format.</p>
+
+  <h3>Inputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media_wav <span class="property-type">string</span></dt>
+    <dd>URL to WAV file to convert to Orion Audio Format.</dd>
+
+    <dt>media_buf <span class="property-type">string</span></dt>
+    <dd>Binary Buffer of WAV to convert to Orion Audio Format.</dd>
+
+  </dl>
+
+  <h3>Outputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to Orion Audio Format after conversion.</dd>
+
+  </dl>
+
+  <h3>Details</h3>
+  <p>This Node is intended to be used as a Transform. That is, place this Node
+  in-line and it will append <code>media</code> to the existing <code>msg</code>
+  object.
+  </p>
+  <p>Will accept media as either a URL <code>media_wav</code> or a binary buffer
+  <code>media_buf</code>.
+  </p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_encode', {
+        category: 'social',
+        color: '#0099ff',
+        defaults: { name: { value: '' } },
+        inputs:1,
+        outputs:1,
+        icon: 'orion_trapezium.png',
+        label: function () { return this.name || 'Orion Encode'; },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+    });
+</script>
+
+<!-- END orion_decode -->
+
+
+<!-- START orion_lookup -->
+
+<script type="text/x-red" data-template-name="orion_lookup">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+      <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
+      <input type='text' id="node-input-orion_config">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_lookup">
+  <p>Orion Lookup Node. Will Lookup User or Group info on Orion.</p>
+
+  <h3>Inputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>sender <span class="property-type">string</span></dt>
+    <dd>UID of User to lookup.</dd>
+
+    <dt>group <span class="property-type">string</span></dt>
+    <dd>Group ID of Group to lookup.</dd>
+
+    <dt>id <span class="property-type">string</span></dt>
+    <dd>UID of User to lookup.</dd>
+
+    <dt>event_type <span class="property-type">string</span></dt>
+    <dd>Type of Event being looked-up.</dd>
+
+  </dl>
+
+  <h3>Outputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>user_info <span class="property-type">object</span></dt>
+    <dd>Information about the User.</dd>
+
+    <dt>userstatus_info <span class="property-type">object</span></dt>
+    <dd>Information about the User Status of the User.</dd>
+
+    <dt>group_info <span class="property-type">object</span></dt>
+    <dd>Information about the Group.</dd>
+
+  </dl>
+
+  <h3>Details</h3>
+  <p>This Node is intended to be used as a Transform. That is, place this Node
+  in-line and it will append <code>user_info</code>,
+  <code>userstatus_info</code> or <code>group_info</code> to the existing
+  <code>msg</code> object.
+  </p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_lookup', {
+        category: 'social',
+        color: '#0099ff',
+        defaults: {
+            name: { value: '' },
+            orion_config: { value: '', type: 'orion_config' },
+        },
+        inputs:1,
+        outputs:1,
+        icon: 'orion_trapezium.png',
+        label: function () { return this.name || 'Orion Lookup'; },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+    });
+</script>
+
+<!-- END orion_lookup -->
