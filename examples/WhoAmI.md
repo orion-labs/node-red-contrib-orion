@@ -23,7 +23,7 @@ Example Debug Output:
       "avatars": "object",
       "created_ts": 1510948270.800819,
       "id": "04ac0a0b6f674a23bad0e5b57fe59f08",
-      "initials": "op"l
+      "initials": "op",
       "last_activity": 1537836374,
       "membercount": 16,
       "name": "OPG"
