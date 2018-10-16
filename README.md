@@ -55,19 +55,6 @@ Encode, Decode and Lookup Nodes act as Transforms, and are intended to be used
 in-line (or piped) between Terminal Nodes. That is, they'll accept input
 `msg`s, and append new fields to the `msg` on output.
 
-### Configure
-
-For **Orion RX**, **Orion TX**, and **Orion Lookup** Nodes, you'll need to
-create at least one **Orion Config** configuration. When you first add one of
-these Nodes to a Flow, you'll see that the config is blank:
-
-![Unconfigured Node](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/unconfigured_node.png)
-
-Click the Edit/Pencil next to *Add new orion_config...* and enter your Orion
-Login and Group information, then click *Save*:
-
-![New Configuration](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/new_config.png)
-
 
 ### Input/Receive (Orion RX)
 
@@ -97,8 +84,6 @@ By connecting the output of the Receive Node to the input of the Decode node,
 `media` will be decoded to `media_wav`. From there you can use the resulting
 WAV file as an input to any other node, for example, IBM Watson Speech-to-Text.
 
-![Orion RX->Orion Decode](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_rx-orion_decode.png)
-
 
 ### Encoding Orion Audio (Orion Encode)
 
@@ -113,6 +98,21 @@ either a binary buffer or a file at a specified URL.
 ![Orion Lookup](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/orion_lookup.png)
 
 Input & Output Node for looking-up Orion User & Group information.
+
+
+Configure
+---------
+
+For **Orion RX**, **Orion TX**, and **Orion Lookup** Nodes, you'll need to
+create at least one **Orion Config** configuration. When you first add one of
+these Nodes to a Flow, you'll see that the config is blank:
+
+![Unconfigured Node](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/unconfigured_node.png)
+
+Click the Edit/Pencil next to *Add new orion_config...* and enter your Orion
+Login and Group information, then click *Save*:
+
+![New Configuration](https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/new_config.png)
 
 
 # Examples
