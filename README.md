@@ -34,7 +34,7 @@ Orion Aster
 -----------
 
 The Open Source **node-red-contrib-orion** Project is intended for use by
-developers and end-users who intent to install and run their own Node-RED
+developers and end-users who wish to install and run their own Node-RED
 instance.
 
 For Orion Pro users, Orion offers *Aster*, a hosted version of Node-RED with
