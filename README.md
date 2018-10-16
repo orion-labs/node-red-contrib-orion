@@ -22,7 +22,7 @@ Orion is an Advanced Voice Platform for instant team communications across any
 device, on any network, without boundaries. The primary Orion Application is
 Push-To-Talk, where users can speak-to and be heard-by groups using the Orion
 Smartphone Applications for iOS and Android, and using specialized devices
-such as the Orion Onyx, Orion Sync.
+such as the <a href="https://www.orionlabs.io/orion-onyx/" target="_new">Orion Onyx</a>, <a href="https://www.orionlabs.io/orion-sync/" target="_new">Orion Sync</a>.
 
 In addition to speaking to people, users can speak to 'things'. Using Orion's
 Voice Superpowers users can build Bots that respond to voice commands, user
