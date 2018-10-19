@@ -1,11 +1,21 @@
 node-red-contrib-orion Examples
 ===============================
 
-This directory contains many examples using Orion Node-RED nodes.
+This directory contains many examples using [Orion Node-RED](https://github.com/orion-labs/node-red-contrib-orion) nodes.
+
+# Requirements
+
+Before using these Nodes, you must have an Orion account. We recommend starting off by creating
+a basic [Orion Organization](https://shop.orionlabs.io/) so you can manage multiple accounts.
+
+You can also sign up from the free Orion App on your [iOS](https://itunes.apple.com/us/app/orion-push-to-talk/id984202314) or [Android](https://play.google.com/store/apps/details?id=com.onbeep.obiwan) Smartphone. You don't have to have the app
+to do
+
+Once you have an account, you will need to use the [Orion Management Console](https://login.orionlabs.io).
 
 # Support
 
-For help with this or other Orion products, please contact Orion Support at [support@orionlabs.io](mailto:support@orionlabs.io?subject=node-red-contrib-orion)
+For help with this or other Orion products, please see [Orion Labs Support](https://support.orionlabs.io) or email us at [support@orionlabs.io](mailto:support@orionlabs.io?subject=node-red-contrib-orion)
 
 # Copyright & License
 
