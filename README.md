@@ -1,4 +1,4 @@
-<a href="https://orionlabs.io" target="_new"><img
+<a href="https://www.orionlabs.io" target="_new"><img
   src="https://github.com/orion-labs/node-red-contrib-orion/raw/master/docs/app_icon.png"
   alt="Orion App Logo"
   width="128"
@@ -16,7 +16,7 @@
 node-red-contrib-orion
 ======================
 
-<a href="http://nodered.org" target="_new">Node-RED</a> nodes to talk to <a href="http://orionlabs.io" target="_new">Orion</a>.
+<a href="https://www.nodered.org" target="_new">Node-RED</a> nodes to talk to <a href="https://www.orionlabs.io" target="_new">Orion</a>.
 
 Orion is an Advanced Voice Platform for instant team communications across any
 device, on any network, without boundaries. The primary Orion Application is
@@ -52,11 +52,16 @@ Run the following command in your Node-RED user directory - typically `~/.node-r
 $ npm install node-red-contrib-orion
 ```
 
-Requirements
-------------
+# Requirements
 
-Before using these Nodes, you should sign-up for an Orion account using the
-*FREE* Orion App on your [iOS](https://itunes.apple.com/us/app/orion-communications-onyx/id984202314?ls=1&mt=8) or [Android](https://play.google.com/store/apps/details?id=com.onbeep.obiwan) Phone.
+To use these nodes you must have an Orion account.
+
+We recommend starting off by creating
+an [Orion Organization](https://shop.orionlabs.io/) so you can manage multiple accounts.
+
+You can also sign up from the free Orion App on your [iOS](https://itunes.apple.com/us/app/orion-push-to-talk/id984202314) or [Android](https://play.google.com/store/apps/details?id=com.onbeep.obiwan) Smartphone.
+
+Once you have an account, you will need to use the [Orion Management Console](https://login.orionlabs.io) to get the various keys you will need to configure nodes.
 
 Usage
 -----
@@ -132,10 +137,9 @@ Login and Group information, then click *Save*:
 
 See <a href="examples/">examples/</a> for many examples!
 
-
 # Support
 
-For help with this or other Orion products, please contact Orion Support at [support@orionlabs.io](mailto:support@orionlabs.io?subject=node-red-contrib-orion)
+For help with this or other Orion products, please see [Orion Labs Support](https://support.orionlabs.io) or email us at [support@orionlabs.io](mailto:support@orionlabs.io?subject=node-red-contrib-orion)
 
 # Copyright & License
 
