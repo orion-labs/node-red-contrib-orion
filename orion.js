@@ -57,7 +57,7 @@ module.exports = function (RED) {
 
         this.on('input', function (msg) {
             request({
-                url: 'https://observatory.orionlabs.io/api/login',
+                url: 'https://api.orionlabs.io/api/login',
                 method: 'POST',
                 json: { 'uid': this.username, 'password': this.password }
             },
@@ -130,7 +130,7 @@ module.exports = function (RED) {
             return null;
         }
 
-        var req_url = 'https://observatory.orionlabs.io/api/ptt/' + this.group;
+        var req_url = 'https://api.orionlabs.io/api/ptt/' + this.group;
 
         console.log(logt + 'Using req_url=' + req_url);
 
@@ -170,7 +170,7 @@ module.exports = function (RED) {
         }
 
         request({
-            url: 'https://observatory.orionlabs.io/api/login',
+            url: 'https://api.orionlabs.io/api/login',
             method: 'POST',
             json: { 'uid': this.username, 'password': this.password }
         }, SetAuthToken);
@@ -297,7 +297,7 @@ module.exports = function (RED) {
 
         this.on('input', function (msg) {
             request({
-                url: 'https://observatory.orionlabs.io/api/login',
+                url: 'https://api.orionlabs.io/api/login',
                 method: 'POST',
                 json: { 'uid': this.username, 'password': this.password }
             },
