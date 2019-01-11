@@ -2,7 +2,7 @@
 Orion Node-RED Client.
 
 Author:: Greg Albrecht <gba@orionlabs.io>
-Copyright:: Copyright 2018 Orion Labs, Inc.
+Copyright:: Copyright 2019 Orion Labs, Inc.
 License:: Apache License, Version 2.0
 Source:: https://github.com/orion-labs/node-red-contrib-orion
 
