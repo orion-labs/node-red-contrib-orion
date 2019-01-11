@@ -1,6 +1,6 @@
 {
     "name": "node-red-contrib-orion",
-    "version": "1.0.0b5",
+    "version": "1.0.0",
     "description": "Orion Node-RED Client.",
     "license": "Apache-2.0",
     "url": "https://orionlabs.io",
