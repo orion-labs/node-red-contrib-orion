@@ -97,6 +97,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <dt>media <span class="property-type">string</span></dt>
     <dd>URL to audio stream being transmitted.</dd>
 
+    <dt>target_user_id <span class="property-type">string</span></dt>
+    <dd>If present, indicates that a Direct Message (one-to-one) was received.</dd>
   </dl>
 
   <h4>User Status Events</h4>
@@ -134,7 +136,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/javascript">
     RED.nodes.registerType('orion_rx', {
-        category: 'social',
+        category: 'Orion',
         defaults: {
             name: { value: '' },
             orion_config: { value: '', type: 'orion_config' },
@@ -159,7 +161,6 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <!-- START orion_tx -->
 
-
 <script type="text/x-red" data-template-name="orion_tx">
   <div class="form-row">
     <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
@@ -183,17 +184,24 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
     <dt>group <span class="property-type">string</span></dt>
     <dd>
-      Group ID to send messages to (group/broadcast).
+      Group ID to send messages to for both broadcast and Direct Messages.
     </dd>
 
     <dt>target <span class="property-type">string</span></dt>
-    <dd>UID User ID to transmit messages to (one-on-one).</dd>
+    <dd>
+      If set, allows a Direct Message to be sent to the specified User (UID).
+    </dd>
 
     <dt>message <span class="property-type">string</span></dt>
-    <dd>Text message to convert to speech and transmit.</dd>
+    <dd>
+      If set, message will be converted to speech and transmitted.
+    </dd>
 
     <dt>media <span class="property-type">string</span></dt>
-    <dd>URL to audio stream to transmit.</dd>
+    <dd>
+      If set, URL to audio stream to transmit.
+      Audio must be encoded in Orion Format.
+    </dd>
 
   </dl>
 
@@ -204,9 +212,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   <ul>
     <li><em>Group</em> Mode: Set <code>group</code> to Group ID to transmit message
     to. This is default operation for Orion Push-To-Talk.</li>
-    <li><em>Target</em> Mode: Set <code>target</code> to User ID (UID) to transmit
-    message to. This is also called 'one-to-one'. Users must be in the same
-    Group and <code>group</code> must be set to that group.
+    <li><em>Direct Message</em> Mode: Set <code>target</code> to User ID (UID) to transmit
+    to (aka one-to-one). Users must be in the same Group and <code>group</code> must be set to that group.
     </li>
   </ul>
 
@@ -225,7 +232,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/javascript">
     RED.nodes.registerType('orion_tx', {
-        category: 'social',
+        category: 'Orion',
         defaults: {
             name: { value: '' },
             orion_config: { value: '', type: 'orion_config' },
@@ -288,7 +295,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/javascript">
     RED.nodes.registerType('orion_decode', {
-        category: 'social',
+        category: 'Orion',
         color: '#0099ff',
         defaults: { name: { value: '' } },
         inputs:1,
@@ -349,7 +356,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/javascript">
     RED.nodes.registerType('orion_encode', {
-        category: 'social',
+        category: 'Orion',
         color: '#0099ff',
         defaults: { name: { value: '' } },
         inputs:1,
@@ -424,7 +431,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/javascript">
     RED.nodes.registerType('orion_lookup', {
-        category: 'social',
+        category: 'Orion',
         color: '#0099ff',
         defaults: {
             name: { value: '' },

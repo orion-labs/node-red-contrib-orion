@@ -44,6 +44,9 @@ module.exports = function (RED) {
         var node_id = node.id;
         var logt = 'OrionTXNode(' + node_id + '): ';
 
+        var lyre_url = process.env.LYRE_URL || 'https://lyre.api.orionaster.com/lyre';
+        console.log(logt + 'Using lyre_url=' + lyre_url);
+
         this.orion_config = RED.nodes.getNode(config.orion_config);
 
         this.username = this.orion_config.credentials.username;
@@ -81,13 +84,14 @@ module.exports = function (RED) {
                     });
 
                     request({
-                        url: process.env.LYRE_URL || 'https://lyre.api.orionaster.com/lyre',
+                        url: lyre_url,
                         method: 'POST',
                         json: {
                             'token': this.token,
                             'group': msg.hasOwnProperty('group') ? msg.group : node.group,
                             'message': msg.hasOwnProperty('message') ? msg.message : null,
-                            'media': msg.hasOwnProperty('media') ? msg.media : null
+                            'media': msg.hasOwnProperty('media') ? msg.media : null,
+                            'target': msg.hasOwnProperty('target') ? msg.target : null
                         }
                     },
                     function (err, httpResponse, body) {
@@ -196,6 +200,9 @@ module.exports = function (RED) {
         var node_id = node.id;
         var logt = 'OrionEncode(' + node_id + '): ';
 
+        var locris_wav2ov = process.env.LOCRIS_WAV2OV || 'https://locris.api.orionaster.com/wav2ov';
+        console.log(logt + 'Using locris_wav2ov=' + locris_wav2ov);
+
         node.on('input', function (msg) {
             if (msg.hasOwnProperty('media_wav') || msg.hasOwnProperty('media_buf')) {
                 /* console.log(
@@ -203,11 +210,7 @@ module.exports = function (RED) {
                 ); */
                 var xhr = new XMLHttpRequest();
 
-                xhr.open(
-                    'POST',
-                    process.env.LOCRIS_WAV2OV || 'https://locris.api.orionaster.com/wav2ov',
-                    true
-                );
+                xhr.open('POST', locris_wav2ov, true);
 
                 xhr.setRequestHeader('Content-Type', 'application/json');
 
@@ -240,6 +243,9 @@ module.exports = function (RED) {
         var node_id = node.id;
         var logt = 'OrionDecode(' + node_id + '): ';
 
+        var locris_ov2wav = process.env.LOCRIS_WAV2OV || 'https://locris.api.orionaster.com/ov2wav';
+        console.log(logt + 'Using locris_ov2wav=' + locris_ov2wav);
+
         node.on('input', function (msg) {
             if (msg.hasOwnProperty('event_type') && msg.event_type === 'ptt') {
                 console.log(
@@ -247,11 +253,7 @@ module.exports = function (RED) {
                 );
                 var xhr = new XMLHttpRequest();
 
-                xhr.open(
-                    'POST',
-                    'https://locris.api.orionaster.com/ov2wav',
-                    true
-                );
+                xhr.open('POST', locris_ov2wav, true);
 
                 xhr.setRequestHeader('Content-Type', 'application/json');
 
@@ -283,6 +285,9 @@ module.exports = function (RED) {
         var node = this;
         var node_id = node.id;
         var logt = 'OrionLookup(' + node_id + '): ';
+
+        var ochre_url = process.env.OCHRE_URL || 'https://ochre.api.orionaster.com/ochre';
+        console.log(logt + 'Using ochre_url=' + ochre_url);
 
         this.orion_config = RED.nodes.getNode(config.orion_config);
 
@@ -322,7 +327,7 @@ module.exports = function (RED) {
                     });
 
                     request({
-                        url: process.env.OCHRE_URL || 'https://ochre.api.orionaster.com/ochre',
+                        url: ochre_url,
                         method: 'POST',
                         json: {
                             'token': this.token,
