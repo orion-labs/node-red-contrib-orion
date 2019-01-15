@@ -243,7 +243,7 @@ module.exports = function (RED) {
         var node_id = node.id;
         var logt = 'OrionDecode(' + node_id + '): ';
 
-        var locris_ov2wav = process.env.LOCRIS_WAV2OV || 'https://locris.api.orionaster.com/ov2wav';
+        var locris_ov2wav = process.env.LOCRIS_OV2WAV || 'https://locris.api.orionaster.com/ov2wav';
         console.log(logt + 'Using locris_ov2wav=' + locris_ov2wav);
 
         node.on('input', function (msg) {
