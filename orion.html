@@ -259,20 +259,29 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-template-name="orion_decode">
     <div class="form-row">
+        <label for="node-input-return_type"><i class="fa fa-list-ul"></i> Return Type</label>
+        <select id="node-input-return_type" style="width:70%;">
+            <option value="url">URL</option>
+            <option value="buffer">Buffer</option>
+        </select>
+    </div>
+    <div class="form-row">
         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
 </script>
 
 <script type="text/x-red" data-help-name="orion_decode">
-  <p>Orion Decode Node. Decodes Orion Audio to WAV.</p>
+  <p>Orion Decode Node. Decodes Orion Audio Format to WAV/PCM.</p>
+  <p><code>msg.payload</code> can either contain a URL to the decoded file, <i>or</i>
+    a Buffer of the decoded audio.</p>
 
   <h3>Inputs</h3>
 
   <dl class="message-properties">
 
     <dt>media <span class="property-type">string</span></dt>
-    <dd>URL to Orion Audio to decode to WAV.</dd>
+    <dd>URL to Orion Audio to Decode.</dd>
 
   </dl>
 
@@ -280,9 +289,9 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
   <dl class="message-properties">
 
-    <dt>media_wav <span class="property-type">string</span></dt>
-    <dd>URL to Orion Audio file after decoding to WAV.</dd>
-
+    <dt>payload <span class="property-type">string | buffer</span></dt>
+    <dd>Decoded Audio. The Node can be configured to return a URL to the
+      Decoded Audio as a file, or a binary Buffer of the Decoded Audio.</dd>
   </dl>
 
   <h3>Details</h3>
@@ -297,7 +306,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     RED.nodes.registerType('orion_decode', {
         category: 'Orion',
         color: '#0099ff',
-        defaults: { name: { value: '' } },
+        defaults: { return_type: { value: 'url' }, name: { value: '' } },
         inputs:1,
         outputs:1,
         icon: 'orion_trapezium.png',

@@ -204,7 +204,7 @@ module.exports = function (RED) {
         console.log(logt + 'Using locris_wav2ov=' + locris_wav2ov);
 
         node.on('input', function (msg) {
-            if (msg.hasOwnProperty('media_wav') || msg.hasOwnProperty('media_buf')) {
+            if (msg.hasOwnProperty('media_wav') || msg.hasOwnProperty('media_buf') || msg.hasOwnProperty('payload')) {
                 /* console.log(
                     'OrionEncode('+node_id+'): Encoding msg="' + JSON.stringify(msg) + '"'
                 ); */
@@ -251,6 +251,7 @@ module.exports = function (RED) {
                 console.log(
                     logt + 'Decoding PTT Event="' + JSON.stringify(msg) + '"'
                 );
+
                 var xhr = new XMLHttpRequest();
 
                 xhr.open('POST', locris_ov2wav, true);
@@ -260,13 +261,20 @@ module.exports = function (RED) {
                 xhr.onreadystatechange = function () {
                     if (xhr.readyState === 4 && xhr.status === 200) {
                         var response = JSON.parse(xhr.responseText);
-                        console.log(
-                            logt + 'Locris ov2wav Response="' + JSON.stringify(response) + '"'
-                        );
+
+                        if (config.return_type === 'url') {
+                            console.log(
+                                logt + 'Locris ov2wav Response="' + JSON.stringify(response) + '"'
+                            );
+                        } else if (config.return_type === 'buffer') {
+                            var buf = response.payload;
+                            response.payload = Buffer.from(buf);
+                        }
                         node.send(response);
                     }
                 };
 
+                msg.return_type = config.return_type;
                 xhr.send(JSON.stringify(msg));
             } else {
                 node.send(msg);
