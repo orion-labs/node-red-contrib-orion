@@ -129,6 +129,10 @@ module.exports = function (RED) {
         this.password = this.orion_config.credentials.password;
         this.group = this.orion_config.group;
 
+        var group_ids = [this.group];
+
+        var token;
+
         if (!this.password) {
             console.error(logt + 'No Password Set!');
             return null;
@@ -147,28 +151,78 @@ module.exports = function (RED) {
                     fill: 'red', shape: 'ring', text: 'OrionRXNode Failed'
                 });
             } else {
-                this.token = body.token;
+                token = body.token;
             }
 
 
-            if (!this.token) {
+            if (!token) {
                 console.error(logt + 'No Auth Token Set!');
             } else {
-                console.log(logt + 'Received Auth Token');
+                console.log(logt + 'Received Auth Token.');
 
-                node.status(
-                    { fill: 'green', shape: 'dot', text: 'Connected' });
+                var engage_options = {
+                    url: 'https://api.orionlabs.io/api/engage',
+                    method: 'POST',
+                    headers: { 'Authorization': token },
+                    json: {
+                        seqnum: Date.now(),
+                        groupIds: group_ids,
+                        destinations: [{
+                            destination: 'EventStream',
+                            verbosity: 'active'
+                        }]
+                    }
+                };
+
+                function engage_callback (error, response, body) {
+                  if (response.statusCode == 409) {
+                      console.log(logt + 'Re-engaging.')
+                      node.status({
+                          fill: 'yellow',
+                          shape: 'dot',
+                          text: 'Connected, Re-Engaging'
+                      });
+                      request(engage_options, engage_callback);
+                  } else if (!error && response.statusCode == 200) {
+                      console.log(logt + 'Engaged.')
+                      node.status({
+                          fill: 'green',
+                          shape: 'dot',
+                          text: 'Connected, Engaged'
+                      });
+                  } else {
+                      console.log(logt + 'Unable to Engage!')
+                      node.status({
+                          fill: 'yellow',
+                          shape: 'dot',
+                          text: 'Connected, Not Engaged'
+                      });
+                    }
+                }
+
+                request(engage_options, engage_callback);
 
                 var req_options = {
                     url: req_url,
                     method: 'GET',
-                    headers: { 'Authorization': body.token }
-                }
+                    headers: { 'Authorization': token }
+                };
 
                 EventStream = request(req_options);
 
                 EventStream.pipe(JSONStream.parse()).pipe(es.mapSync(
-                    function (data) { node.send(data); }
+                    function (data) {
+                        if (data.event_type === 'ping') {
+                            var pong_options = {
+                                url: 'https://api.orionlabs.io/api/pong',
+                                method: 'POST',
+                                headers: { 'Authorization': token }
+                            };
+                            request.post(pong_options, engage_callback);
+                            node.send(data);
+                        }
+                        node.send(data);
+                    }
                 ));
             }
         }
@@ -200,10 +254,19 @@ module.exports = function (RED) {
         var node_id = node.id;
         var logt = 'OrionEncode(' + node_id + '): ';
 
+        // Override wav2ov endpoint for local development:
         var locris_wav2ov = process.env.LOCRIS_WAV2OV || 'https://locris.api.orionaster.com/wav2ov';
         console.log(logt + 'Using locris_wav2ov=' + locris_wav2ov);
 
         node.on('input', function (msg) {
+            if (msg.hasOwnProperty('media_wav')) {
+                console.log(logt + 'DEPRECATED: Using "media_wav", use "payload" instead.')
+            }
+
+            if (msg.hasOwnProperty('media_buf')) {
+                console.log(logt + 'DEPRECATED: Using "media_buf", use "payload" instead.')
+            }
+
             if (msg.hasOwnProperty('media_wav') || msg.hasOwnProperty('media_buf') || msg.hasOwnProperty('payload')) {
                 /* console.log(
                     'OrionEncode('+node_id+'): Encoding msg="' + JSON.stringify(msg) + '"'
