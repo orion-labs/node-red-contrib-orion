@@ -13,7 +13,7 @@ var request = require('request');
 var JSONStream = require('JSONStream');
 var es = require('event-stream');
 var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
-
+var orion = require('./orionlib.js');
 
 module.exports = function (RED) {
 
@@ -42,10 +42,6 @@ module.exports = function (RED) {
         RED.nodes.createNode(this, config);
         var node = this;
         var node_id = node.id;
-        var logt = 'OrionTXNode(' + node_id + '): ';
-
-        var lyre_url = process.env.LYRE_URL || 'https://lyre.api.orionaster.com/lyre';
-        console.log(logt + 'Using lyre_url=' + lyre_url);
 
         this.orion_config = RED.nodes.getNode(config.orion_config);
 
@@ -53,54 +49,16 @@ module.exports = function (RED) {
         this.password = this.orion_config.credentials.password;
         this.group = this.orion_config.group;
 
-        if (!this.password) {
-            console.error(logt+'No Password Set!');
-            return null;
-        }
-
         this.on('input', function (msg) {
-            request({
-                url: 'https://api.orionlabs.io/api/login',
-                method: 'POST',
-                json: { 'uid': this.username, 'password': this.password }
-            },
-            function (err, httpResponse, body) {
-                if (err) {
-                    node.error(logt, err, body);
-                    node.status({
-                        fill: 'red', shape: 'ring', text: 'OrionTXNode Failed'
-                    });
-                } else {
-                    this.token = body.token;
-                }
-
-                if (!this.token) {
-                    console.error(logt + 'No Auth Token Set!');
-                } else {
-                    console.log(logt + 'Received Auth Token');
-
-                    node.status({
-                        fill: 'green', shape: 'dot', text: 'Connected'
-                    });
-
-                    request({
-                        url: lyre_url,
-                        method: 'POST',
-                        json: {
-                            'token': this.token,
-                            'group': msg.hasOwnProperty('group') ? msg.group : node.group,
-                            'message': msg.hasOwnProperty('message') ? msg.message : null,
-                            'media': msg.hasOwnProperty('media') ? msg.media : null,
-                            'target': msg.hasOwnProperty('target') ? msg.target : null
-                        }
-                    },
-                    function (err, httpResponse, body) {
-                        if (err) {
-                            console.log(logt, err, msg);
-                        }
-                    });
-                }
-            });
+            var lyre_options = {
+                'username': this.username,
+                'password': this.password,
+                'group': msg.hasOwnProperty('group') ? msg.group : node.group,
+                'message': msg.hasOwnProperty('message') ? msg.message : null,
+                'media': msg.hasOwnProperty('media') ? msg.media : null,
+                'target': msg.hasOwnProperty('target') ? msg.target : null
+            };
+            orion.lyre(lyre_options);
         });
 
         node.on('close', function () { return; });
@@ -108,8 +66,7 @@ module.exports = function (RED) {
     RED.nodes.registerType('orion_tx', OrionTXNode, {
         credentials: {
             username: { type: 'text' },
-            password: { type: 'password' },
-            token: { type: 'password' }
+            password: { type: 'password' }
         }
     });
 
@@ -121,7 +78,6 @@ module.exports = function (RED) {
         RED.nodes.createNode(this, config);
         var node = this;
         var node_id = node.id;
-        var logt = 'OrionRXNode(' + node_id + '): ';
 
         this.orion_config = RED.nodes.getNode(config.orion_config);
 
@@ -129,112 +85,20 @@ module.exports = function (RED) {
         this.password = this.orion_config.credentials.password;
         this.group = this.orion_config.group;
 
-        var group_ids = [this.group];
-
-        var token;
-
-        if (!this.password) {
-            console.error(logt + 'No Password Set!');
-            return null;
+        function ok_send (data) {
+          node.status({
+              fill: 'green', shape: 'dot', text: 'Receiving Events'
+          });
+          node.send(data);
         }
 
-        var req_url = 'https://api.orionlabs.io/api/ptt/' + this.group;
+        orion.event_stream(
+            this.username, this.password, [this.group], ok_send);
 
-        console.log(logt + 'Using req_url=' + req_url);
-
-        var EventStream;
-
-        function SetAuthToken (err, httpResponse, body) {
-            if (err) {
-                node.error(err, body);
-                node.status({
-                    fill: 'red', shape: 'ring', text: 'OrionRXNode Failed'
-                });
-            } else {
-                token = body.token;
-            }
-
-
-            if (!token) {
-                console.error(logt + 'No Auth Token Set!');
-            } else {
-                console.log(logt + 'Received Auth Token.');
-
-                var engage_options = {
-                    url: 'https://api.orionlabs.io/api/engage',
-                    method: 'POST',
-                    headers: { 'Authorization': token },
-                    json: {
-                        seqnum: Date.now(),
-                        groupIds: group_ids,
-                        destinations: [{
-                            destination: 'EventStream',
-                            verbosity: 'active'
-                        }]
-                    }
-                };
-
-                function engage_callback (error, response, body) {
-                  if (response.statusCode == 409) {
-                      console.log(logt + 'Re-engaging.')
-                      node.status({
-                          fill: 'yellow',
-                          shape: 'dot',
-                          text: 'Connected, Re-Engaging'
-                      });
-                      request(engage_options, engage_callback);
-                  } else if (!error && response.statusCode == 200) {
-                      console.log(logt + 'Engaged.')
-                      node.status({
-                          fill: 'green',
-                          shape: 'dot',
-                          text: 'Connected, Engaged'
-                      });
-                  } else {
-                      console.log(logt + 'Unable to Engage!')
-                      node.status({
-                          fill: 'yellow',
-                          shape: 'dot',
-                          text: 'Connected, Not Engaged'
-                      });
-                    }
-                }
-
-                request(engage_options, engage_callback);
-
-                var req_options = {
-                    url: req_url,
-                    method: 'GET',
-                    headers: { 'Authorization': token }
-                };
-
-                EventStream = request(req_options);
-
-                EventStream.pipe(JSONStream.parse()).pipe(es.mapSync(
-                    function (data) {
-                        if (data.event_type === 'ping') {
-                            var pong_options = {
-                                url: 'https://api.orionlabs.io/api/pong',
-                                method: 'POST',
-                                headers: { 'Authorization': token }
-                            };
-                            request.post(pong_options, engage_callback);
-                            node.send(data);
-                        }
-                        node.send(data);
-                    }
-                ));
-            }
-        }
-
-        request({
-            url: 'https://api.orionlabs.io/api/login',
-            method: 'POST',
-            json: { 'uid': this.username, 'password': this.password }
-        }, SetAuthToken);
-
-        node.on('close', function() { EventStream.abort(); });
+        //node.on('close', function() { EventStream.abort(); });
+        node.on('close', function () { return; });
     }
+
     RED.nodes.registerType('orion_rx', OrionRXNode, {
         credentials: {
             username: { type: 'text' },
