@@ -85,18 +85,37 @@ module.exports = function (RED) {
         this.password = this.orion_config.credentials.password;
         this.group = this.orion_config.group;
 
+        node.status({
+            fill: 'yellow', shape: 'dot', text: 'Idle'
+        });
+
+        var engageTimer = setTimeout(function () {
+          node.status({
+              fill: 'yellow', shape: 'dot', text: 'Idle'
+          });
+        }, 290000);
+
         function ok_send (data) {
+          clearTimeout(engageTimer);
+
+          var engageTimer = setTimeout(function () {
+            node.status({
+                fill: 'yellow', shape: 'dot', text: 'Idle'
+            });
+          }, 290000);
+
           node.status({
               fill: 'green', shape: 'dot', text: 'Receiving Events'
           });
           node.send(data);
         }
 
-        orion.event_stream(
+        // FIXME: This will leak every time it's redeployed.
+        var event_stream = orion.event_stream(
             this.username, this.password, [this.group], ok_send);
 
-        //node.on('close', function() { EventStream.abort(); });
-        node.on('close', function () { return; });
+        // FIXME: This is where we'd want to close event_stream:
+        node.on('close', function () {});
     }
 
     RED.nodes.registerType('orion_rx', OrionRXNode, {

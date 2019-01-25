@@ -1,4 +1,12 @@
+/*
+Orion Node.JS Library
 
+Author:: Greg Albrecht <gba@orionlabs.io>
+Copyright:: Copyright 2019 Orion Labs, Inc.
+License:: Apache License, Version 2.0
+Source:: https://github.com/orion-labs/node-red-contrib-orion
+
+*/
 
 
 var request = require('request');
@@ -7,7 +15,7 @@ var es = require('event-stream');
 var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 
-// Login to Orion.
+// Login to Orion and retrieve a Auth Token for later use:
 function auth (username, password) {
   return new Promise(function(resolve, reject) {
     request({
@@ -30,10 +38,16 @@ exports.auth = function (username, password) {
       .then(function (token) {
         return token;
       });
-}
+};
 
 
+/*
+'Engage' with the Orion Event Stream.
+Ensures user Presence for asyncronous stream connections (APN).
+*/
 function engage (token, group_ids) {
+  console.log(Date() + ' engage() token=' + token);
+
   var engage_options = {
     url: 'https://api.orionlabs.io/api/engage',
     method: 'POST',
@@ -48,14 +62,28 @@ function engage (token, group_ids) {
     }
   };
 
+  /*
+  Start a Timer every time we Engage. If we don't receive a Ping within this
+  period, we'll attempt to re-engage.
+
+  The prescribed period is 5 minutes, or 300000 ms.
+  */
+  var engageTimer = setTimeout(function () {
+    console.log(Date() + ' Engage Timeout.');
+    engage (token, group_ids);
+  }, 360000);
+
   function engage_callback (error, response, body) {
-    if (response.statusCode == 409) {
-      console.log(Date() + ' Re-engaging.')
-      request(engage_options, engage_callback);
+    if (error) {
+      console.log(Date() + ' Unable to Engage. error=' + error);
+    } else if (response.statusCode == 409) {
+      console.log(Date() + ' Re-engaging.');
+      clearTimeout(engageTimer);
+      engage (token, group_ids);
     } else if (!error && response.statusCode == 200) {
-      console.log(Date() + ' Engaged.')
+      console.log(Date() + ' Engaged.');
     } else {
-      console.log('Unable to Engage!')
+      console.log(Date() + ' Unable to Engage!');
     }
   }
 
@@ -63,7 +91,9 @@ function engage (token, group_ids) {
 }
 
 
+// Respond to an Event Stream Engage Ping
 function pong (token, ping_id) {
+  console.log(Date() + ' pong()');
   return new Promise(function(resolve, reject) {
     request({
       url: 'https://api.orionlabs.io/api/pong',
@@ -96,7 +126,9 @@ exports.event_stream = function (username, password, group_ids, callback) {
     };
 
     EventStream = request(req_options, function(err) {
+      console.log('err.code=' + err.code);
       console.log(err.code === 'ETIMEDOUT');
+      console.log('err.connect=' + err.connect);
       // Set to `true` if the timeout was a connection timeout, `false` or
       // `undefined` otherwise.
       console.log(err.connect === true);
@@ -109,10 +141,13 @@ exports.event_stream = function (username, password, group_ids, callback) {
           // Respond to Engage's Ping/Pong
           pong(token)
             .then(function (response) {
-              console.log(Date() + ' Engaged.');
+              console.log(Date() + ' Pong succeeded.');
+              callback(data);
             })
             .catch(function (response) {
+              console.log(Date() + ' Pong failed, calling engage().');
               engage(token, group_ids);
+              callback(data);
             });
         }
         callback(data);
@@ -123,7 +158,7 @@ exports.event_stream = function (username, password, group_ids, callback) {
 };
 
 
-
+// Orion TTS-as-a-Service. (TTSAAS?)
 exports.lyre = function (options) {
   var lyre_url = process.env.LYRE_URL || 'https://lyre.api.orionaster.com/lyre';
 
@@ -148,7 +183,3 @@ exports.lyre = function (options) {
     });
 
 };
-
-
-
-//module.exports = Orion;
