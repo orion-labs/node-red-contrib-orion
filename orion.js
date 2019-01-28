@@ -106,27 +106,27 @@ module.exports = function (RED) {
         var session_id;
 
         // Called after Auth to connect to Event Stream:
-        function event_stream_callback (data) {
-          if (data.error) {
-            console.error(data.error);
+        function event_stream_callback (auth) {
+          if (auth.error) {
+            console.error(auth.error);
             node.status({
-                fill: 'red', shape: 'dot', text: data.error
+                fill: 'red', shape: 'dot', text: auth.error
             });
-          } else if (!data.token) {
+          } else if (!auth.token) {
             console.error('No Auth Token');
             node.status({
                 fill: 'red', shape: 'dot', text: 'No Auth Token'
             });
-          } else if (data.token && data.sessionId) {
-            session_id = data.sessionId;
+          } else if (auth.token && auth.sessionId) {
+            session_id = auth.sessionId;
 
-            orion.engage(data.token, group_ids);
+            orion.engage(auth.token, group_ids);
             node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
 
             var es_options = {
               url: es_url,
               method: 'GET',
-              headers: { 'Authorization': data.token },
+              headers: { 'Authorization': auth.token },
               timeout: 120000
             };
 
@@ -159,7 +159,7 @@ module.exports = function (RED) {
                 if (data.event_type === 'ping') {
                   node.debug('Ping Received.');
                   // Respond to Engage's Ping/Pong
-                  orion.pong(token)
+                  orion.pong(auth.token)
                     .then(function (response) {
                       node.debug('Pong succeeded.');
                       node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
@@ -168,7 +168,7 @@ module.exports = function (RED) {
                     .catch(function (response) {
                       node.debug('Pong failed, calling engage()');
                       node.status({fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
-                      orion.engage(token, group_ids);
+                      orion.engage(auth.token, group_ids);
                       event_callback(data);
                     });
                 } else {
