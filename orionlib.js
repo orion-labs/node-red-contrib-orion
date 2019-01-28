@@ -208,7 +208,7 @@ exports.lyre = function (options) {
         method: 'POST',
         json: {
           'token': auth.token,
-          'group': options.group,
+          'group_ids': options.group_ids,
           'message': options.message || null,
           'media': options.media || null,
           'target': options.target || null
