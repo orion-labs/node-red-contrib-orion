@@ -51,9 +51,23 @@ module.exports = function (RED) {
       this.username = this.orion_config.credentials.username;
       this.password = this.orion_config.credentials.password;
 
-      var group_ids = this.orion_config.group_ids.split(',');
+      /*
+      2019-01-28:
+      - Switched from 'group' to 'group_ids' to support multi-group.
+      - 'group' as a configuration option is now deprecated.
+      - 'group_ids' is one-or-more Orion Group IDs separated by ','.
+      */
+      var group_ids;
+      if (this.orion_config.group) {
+        node.warn('DEPRECATED: Found "group", use "group_ids" instead.');
+        group_ids = [this.orion_config.group];
+      }
 
-      console.log('ng=' + group_ids);
+      if (this.orion_config.group_ids) {
+        group_ids = this.orion_config.group_ids.split(',');
+      }
+
+      console.debug('group_ids=' + group_ids);
 
       this.on('input', function (msg) {
         var lyre_options = {
@@ -93,7 +107,23 @@ module.exports = function (RED) {
         this.username = this.orion_config.credentials.username;
         this.password = this.orion_config.credentials.password;
 
-        var group_ids = this.orion_config.group_ids.split(',');
+        /*
+        2019-01-28:
+        - Switched from 'group' to 'group_ids' to support multi-group.
+        - 'group' as a configuration option is now deprecated.
+        - 'group_ids' is one-or-more Orion Group IDs separated by ','.
+        */
+        var group_ids;
+        if (this.orion_config.group) {
+          node.warn('DEPRECATED: Found "group", use "group_ids" instead.');
+          group_ids = [this.orion_config.group];
+        }
+
+        if (this.orion_config.group_ids) {
+          group_ids = this.orion_config.group_ids.split(',');
+        }
+
+        console.debug('group_ids=' + group_ids);
 
         var es_url = 'https://api.orionlabs.io/api/ptt/' + group_ids.join('+');
         node.debug('es_url=' + es_url);
