@@ -50,13 +50,13 @@ module.exports = function (RED) {
 
       this.username = this.orion_config.credentials.username;
       this.password = this.orion_config.credentials.password;
-      this.group_ids = this.orion_config.group_ids.split(',');
+      var group_ids = this.orion_config.group_ids.split(',');
 
       this.on('input', function (msg) {
         var lyre_options = {
           'username': this.username,
           'password': this.password,
-          'group_ids': msg.hasOwnProperty('group_ids') ? msg.group_ids : this.group_ids,
+          'group_ids': msg.hasOwnProperty('group_ids') ? msg.group_ids : group_ids,
           'message': msg.hasOwnProperty('message') ? msg.message : null,
           'media': msg.hasOwnProperty('media') ? msg.media : null,
           'target': msg.hasOwnProperty('target') ? msg.target : null
@@ -88,9 +88,9 @@ module.exports = function (RED) {
 
         this.username = this.orion_config.credentials.username;
         this.password = this.orion_config.credentials.password;
-        this.group_ids = this.orion_config.group_ids.split(',');
+        var group_ids = this.orion_config.group_ids.split(',');
 
-        var es_url = 'https://api.orionlabs.io/api/ptt/' + this.group_ids.join('+');
+        var es_url = 'https://api.orionlabs.io/api/ptt/' + group_ids.join('+');
         node.debug('es_url=' + es_url);
 
         node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
@@ -120,7 +120,7 @@ module.exports = function (RED) {
           } else if (data.token && data.sessionId) {
             session_id = data.sessionId;
 
-            orion.engage(data.token, this.group_ids);
+            orion.engage(data.token, group_ids);
             node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
 
             var es_options = {
@@ -168,7 +168,7 @@ module.exports = function (RED) {
                     .catch(function (response) {
                       node.debug('Pong failed, calling engage()');
                       node.status({fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
-                      orion.engage(token, this.group_ids);
+                      orion.engage(token, group_ids);
                       event_callback(data);
                     });
                 } else {
