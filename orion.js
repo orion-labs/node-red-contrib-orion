@@ -50,31 +50,13 @@ module.exports = function (RED) {
 
       this.username = this.orion_config.credentials.username;
       this.password = this.orion_config.credentials.password;
-
-      /*
-      2019-01-28:
-      - Switched from 'group' to 'group_ids' to support multi-group.
-      - 'group' as a configuration option is now deprecated.
-      - 'group_ids' is one-or-more Orion Group IDs separated by ','.
-      */
-      var group_ids;
-      if (this.orion_config.group) {
-        node.warn('DEPRECATED: Found "group", use "group_ids" instead.');
-        group_ids = [this.orion_config.group];
-      }
-
-      if (this.orion_config.group_ids) {
-        group_ids = this.orion_config.group_ids.split(',');
-      }
-
-      console.debug('group_ids=' + group_ids);
+      this.group_ids = this.orion_config.group_ids.split(',');
 
       this.on('input', function (msg) {
         var lyre_options = {
           'username': this.username,
           'password': this.password,
-          'group': msg.hasOwnProperty('group') ? msg.group : group_ids[0],
-          'group_ids': msg.hasOwnProperty('group_ids') ? msg.group_ids : group_ids,
+          'group_ids': msg.hasOwnProperty('group_ids') ? msg.group_ids : this.group_ids,
           'message': msg.hasOwnProperty('message') ? msg.message : null,
           'media': msg.hasOwnProperty('media') ? msg.media : null,
           'target': msg.hasOwnProperty('target') ? msg.target : null
@@ -106,26 +88,9 @@ module.exports = function (RED) {
 
         this.username = this.orion_config.credentials.username;
         this.password = this.orion_config.credentials.password;
+        this.group_ids = this.orion_config.group_ids.split(',');
 
-        /*
-        2019-01-28:
-        - Switched from 'group' to 'group_ids' to support multi-group.
-        - 'group' as a configuration option is now deprecated.
-        - 'group_ids' is one-or-more Orion Group IDs separated by ','.
-        */
-        var group_ids;
-        if (this.orion_config.group) {
-          node.warn('DEPRECATED: Found "group", use "group_ids" instead.');
-          group_ids = [this.orion_config.group];
-        }
-
-        if (this.orion_config.group_ids) {
-          group_ids = this.orion_config.group_ids.split(',');
-        }
-
-        console.debug('group_ids=' + group_ids);
-
-        var es_url = 'https://api.orionlabs.io/api/ptt/' + group_ids.join('+');
+        var es_url = 'https://api.orionlabs.io/api/ptt/' + this.group_ids.join('+');
         node.debug('es_url=' + es_url);
 
         node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
@@ -155,7 +120,7 @@ module.exports = function (RED) {
           } else if (data.token && data.sessionId) {
             session_id = data.sessionId;
 
-            orion.engage(data.token, group_ids);
+            orion.engage(data.token, this.group_ids);
             node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
 
             var es_options = {
@@ -203,7 +168,7 @@ module.exports = function (RED) {
                     .catch(function (response) {
                       node.debug('Pong failed, calling engage()');
                       node.status({fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
-                      orion.engage(token, group_ids);
+                      orion.engage(token, this.group_ids);
                       event_callback(data);
                     });
                 } else {
