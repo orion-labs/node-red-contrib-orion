@@ -9,6 +9,11 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 */
 
 
+/*jslint node: true */
+/*jslint white: true */
+
+"use strict";
+
 var request = require('request');
 var JSONStream = require('JSONStream');
 var es = require('event-stream');
@@ -16,24 +21,24 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 
 // Login to Orion and retrieve a Auth Token, then call callback:
-exports.auth = function (username, password, callback) {
+function auth (username, password, callback) {
   request({
     url: 'https://api.orionlabs.io/api/login',
     method: 'POST',
     json: { 'uid': username, 'password': password }
-  }, function (error, httpResponse, body) {
+  }, function (error, response, body) {
 
     if (error) {
-      callback({error: error})
-    } else if (httpResponse.statusCode !== 200) {
-      callback({error: 'Auth Status Code != 200'})
-    } else if (httpResponse.statusCode === 200) {
-      callback(body)
+      callback({error: error});
+    } else if (response.statusCode !== 200) {
+      callback({error: 'Auth Status Code != 200'});
+    } else if (response.statusCode === 200) {
+      callback(body);
     }
 
   });
 }
-
+exports.auth = auth;
 
 // Login to Orion and retrieve a Auth Token for later use:
 function auth_promise (username, password) {
@@ -42,7 +47,7 @@ function auth_promise (username, password) {
       url: 'https://api.orionlabs.io/api/login',
       method: 'POST',
       json: { 'uid': username, 'password': password }
-    }, function (error, httpResponse, body) {
+    }, function (error, response, body) {
       if (error) {
         reject(error);
       } else {
@@ -51,16 +56,16 @@ function auth_promise (username, password) {
     });
   });
 }
-exports.auth_promise = auth_promise
+exports.auth_promise = auth_promise;
 
 
-
-exports.logout = function (session_id) {
+function logout (session_id) {
   request({
     url: 'https://api.orionlabs.io/api/logout/' + session_id,
     method: 'POST'
-  })
+  });
 }
+exports.logout = logout;
 
 /*
 'Engage' with the Orion Event Stream.
@@ -97,11 +102,11 @@ function engage (token, group_ids) {
   function engage_callback (error, response, body) {
     if (error) {
       console.log(Date() + ' Unable to Engage. error=' + error);
-    } else if (response.statusCode == 409) {
+    } else if (response.statusCode === 409) {
       console.log(Date() + ' Re-engaging.');
       clearTimeout(engageTimer);
       engage (token, group_ids);
-    } else if (!error && response.statusCode == 200) {
+    } else if (!error && response.statusCode === 200) {
       console.log(Date() + ' Engaged.');
     } else {
       console.log(Date() + ' Unable to Engage!');
@@ -115,7 +120,7 @@ exports.engage = engage;
 
 // Respond to an Event Stream Engage Ping
 function pong (token, ping_id) {
-  console.log(Date() + ' pong()');
+  console.log(Date() + ' pong() ping_id=' + ping_id);
   return new Promise(function(resolve, reject) {
     request({
       url: 'https://api.orionlabs.io/api/pong',
@@ -133,72 +138,8 @@ function pong (token, ping_id) {
 exports.pong = pong;
 
 
-function event_stream (token, group_ids, callback) {
-  console.debug(Date() + 'event_stream() group_ids=' + group_ids);
-
-  var req_url = 'https://api.orionlabs.io/api/ptt/' + group_ids[0];
-  console.debug(Date() + ' req_url=' + req_url);
-
-  var req_options = {
-    url: req_url,
-    method: 'GET',
-    headers: { 'Authorization': token },
-    timeout: 120000
-  };
-
-  EventStream = request(req_options, function(err) {
-    if (err) {
-      console.log('err.code=' + err.code);
-      console.log(err.code === 'ETIMEDOUT');
-      console.log('err.connect=' + err.connect);
-      // Set to `true` if the timeout was a connection timeout, `false` or
-      // `undefined` otherwise.
-      console.log(err.connect === true);
-    } else {
-      console.log(Date() + ' In err function but no err.');
-    }
-  });
-
-  function abt () {
-    console.log('abt');
-    return EventStream.abort();
-  }
-
-  EventStream.pipe(JSONStream.parse()).pipe(es.mapSync(
-    function (data) {
-      if (data.event_type === 'ping') {
-        console.log(Date() + ' Ping Received.');
-        // Respond to Engage's Ping/Pong
-        pong(token)
-          .then(function (response) {
-            console.log(Date() + ' Pong succeeded.');
-            callback(data);
-          })
-          .catch(function (response) {
-            console.log(Date() + ' Pong failed, calling engage().');
-            engage(token, group_ids);
-            callback(data);
-          });
-      } else {
-        callback(data);
-      }
-    }
-  ));
-
-}
-exports.event_stream = event_stream
-
-exports.event_stream1 = function (username, password, group_ids, callback) {
-  console.log('export.event_stream() callback=' + callback);
-  auth_promise(username, password).then(function (creds) {
-    engage(creds.token, group_ids);
-    event_stream(creds.token, group_ids, callback);
-  });
-};
-
-
 // Orion TTS-as-a-Service. (TTSAAS?)
-exports.lyre = function (options) {
+function lyre (options) {
   var lyre_url = process.env.LYRE_URL || 'https://lyre.api.orionaster.com/lyre';
   console.debug(Date() + ' lyre_url=' + lyre_url);
 
@@ -215,17 +156,18 @@ exports.lyre = function (options) {
           'target': options.target || null
         }
       },
-      function (err, httpResponse, body) {
+      function (err, response, body) {
         if (err) {
           console.error(err);
         }
       });
     });
 
-};
+}
+exports.lyre = lyre;
 
 
-exports.lookup_p = function(options, callback) {
+function lookup_promise (options, callback) {
   var ochre_url = process.env.OCHRE_URL || 'https://ochre.api.orionaster.com/ochre';
 
     auth_promise(options.username, options.password)
@@ -243,14 +185,15 @@ exports.lookup_p = function(options, callback) {
           if (error) {
             console.log(Date() + ' Lookup error=' + error);
           } else {
-            console.log(body.msg);
-            //callback(body.msg);
+            callback(body.msg);
           }
         });
       });
-};
+}
+exports.lookup_promise = lookup_promise;
 
-exports.lookup = function (auth, msg, callback) {
+
+function lookup (auth, msg, callback) {
   var ochre_url = process.env.OCHRE_URL || 'https://ochre.api.orionaster.com/ochre';
   request({
     url: ochre_url,
@@ -270,16 +213,16 @@ exports.lookup = function (auth, msg, callback) {
     }
   });
 }
+exports.lookup = lookup;
 
 
-
-exports.locris_wav2ov = function (msg, callback) {
+function locris_wav2ov (msg, callback) {
   // Override wav2ov endpoint for local development:
-  var locris_wav2ov = process.env.LOCRIS_WAV2OV || 'https://locris.api.orionaster.com/wav2ov';
+  var locris_wav2ov_url = process.env.LOCRIS_WAV2OV || 'https://locris.api.orionaster.com/wav2ov',
+      xhr = new XMLHttpRequest();
+  console.debug(Date() + ' locris_wav2ov_url=' + locris_wav2ov_url);
 
-  var xhr = new XMLHttpRequest();
-
-  xhr.open('POST', locris_wav2ov, true);
+  xhr.open('POST', locris_wav2ov_url, true);
 
   xhr.setRequestHeader('Content-Type', 'application/json');
 
@@ -291,17 +234,16 @@ exports.locris_wav2ov = function (msg, callback) {
   };
 
   xhr.send(JSON.stringify(msg));
+}
+exports.locris_wav2ov = locris_wav2ov;
 
-};
 
+function locris_ov2wav (msg, callback) {
+  var locris_ov2wav_url = process.env.LOCRIS_OV2WAV || 'https://locris.api.orionaster.com/ov2wav',
+      xhr = new XMLHttpRequest();
+  console.debug(Date() + ' locris_ov2wav_url=' + locris_ov2wav_url);
 
-exports.locris_ov2wav = function (msg, callback) {
-  var locris_ov2wav = process.env.LOCRIS_OV2WAV || 'https://locris.api.orionaster.com/ov2wav';
-  console.debug(Date() + ' locris_ov2wav=' + locris_ov2wav);
-
-  var xhr = new XMLHttpRequest();
-
-  xhr.open('POST', locris_ov2wav, true);
+  xhr.open('POST', locris_ov2wav_url, true);
 
   xhr.setRequestHeader('Content-Type', 'application/json');
 
@@ -310,13 +252,12 @@ exports.locris_ov2wav = function (msg, callback) {
       var response = JSON.parse(xhr.responseText);
 
       if (msg.return_type === 'buffer') {
-        var buf = response.payload;
-        response.payload = Buffer.from(buf);
+        response.payload = Buffer.from(response.payload);
       }
       callback(response);
     }
   };
 
   xhr.send(JSON.stringify(msg));
-
-};
+}
+exports.locris_ov2wav = locris_ov2wav;
