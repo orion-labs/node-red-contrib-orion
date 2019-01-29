@@ -110,7 +110,7 @@ function engage (token, group_ids) {
 
   request(engage_options, engage_callback);
 }
-exports.engage = engage
+exports.engage = engage;
 
 
 // Respond to an Event Stream Engage Ping
@@ -130,6 +130,7 @@ function pong (token, ping_id) {
     });
   });
 }
+exports.pong = pong;
 
 
 function event_stream (token, group_ids, callback) {
