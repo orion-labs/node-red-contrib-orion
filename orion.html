@@ -19,8 +19,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <input type='password' id="node-config-input-password">
   </div>
   <div class="form-row">
-    <label for="node-config-input-group_ids"><i class="icon-bookmark"></i> Groups (split:',')</label>
-    <input type='text' id="node-config-input-group_ids">
+    <label for="node-config-input-groupIds"><i class="icon-bookmark"></i> Groups (split:',')</label>
+    <input type='text' id="node-config-input-groupIds">
   </div>
   <div class="form-row">
       <label for="node-input-name"><i class="icon-tag"></i> Name</label>
@@ -39,7 +39,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     RED.nodes.registerType('orion_config', {
         category: 'config',
         defaults: {
-            group_ids: { value: '', required: false },
+            groupIds: { value: '', required: false },
             name: { value: '', required: false }
         },
         credentials: {
@@ -47,7 +47,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
             password: { type: 'password' }
         },
         label: function () {
-            return this.name || this.credentials.username + '@' + this.group_ids[0];
+            return this.name || this.credentials.username + '@' + this.groupIds[0];
         },
         labelStyle: function () {
             return this.name ? 'node_label_italic' : '';

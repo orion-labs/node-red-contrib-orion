@@ -29,5 +29,9 @@
         "nodes": {
             "orion": "orion.js"
         }
+    },
+    "devDependencies": {
+        "eslint": "^5.12.1",
+        "eslint-config-google": "^0.11.0"
     }
 }
