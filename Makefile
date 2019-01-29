@@ -16,3 +16,14 @@ install:
 
 publish:
 	npm publish
+
+lint: jshint eslint jslint
+
+jshint:
+	jshint *.js
+
+eslint:
+	eslint *.js
+
+jslint:
+	jslint *.js

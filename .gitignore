@@ -60,3 +60,23 @@ typings/
 # next.js build output
 .next
 .DS_Store
+
+.DS_store
+.config.json
+.dist
+.jshintignore
+.npm
+.project
+.sessions.json
+.settings
+.tern-project
+*.backup
+*_cred*
+coverage
+credentials.json
+flows*.json
+nodes/node-red-nodes/
+node_modules
+public
+locales/zz-ZZ
+nodes/core/locales/zz-ZZ

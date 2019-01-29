@@ -19,8 +19,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <input type='password' id="node-config-input-password">
   </div>
   <div class="form-row">
-    <label for="node-config-input-group"><i class="icon-bookmark"></i> Group</label>
-    <input type='text' id="node-config-input-group">
+    <label for="node-config-input-groupIds"><i class="icon-bookmark"></i> Groups (split:',')</label>
+    <input type='text' id="node-config-input-groupIds">
   </div>
   <div class="form-row">
       <label for="node-input-name"><i class="icon-tag"></i> Name</label>
@@ -30,14 +30,16 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-help-name="orion_config">
     <p>Authentication for the Orion API</p>
-    <p>Requires a username, password and default group.</p>
+    <p>Requires a username, password.</p>
+
+    <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
 <script type="text/javascript">
     RED.nodes.registerType('orion_config', {
         category: 'config',
         defaults: {
-            group: { value: '', required: false },
+            groupIds: { value: '', required: false },
             name: { value: '', required: false }
         },
         credentials: {
@@ -45,7 +47,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
             password: { type: 'password' }
         },
         label: function () {
-            return this.name || this.credentials.username + '@' + this.group;
+            return this.name || this.credentials.username + '@' + this.groupIds[0];
         },
         labelStyle: function () {
             return this.name ? 'node_label_italic' : '';
@@ -60,12 +62,21 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-template-name="orion_rx">
   <div class="form-row">
+      <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="Name">
+  </div>
+
+  <div class="form-row">
     <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
     <input type='text' id="node-input-orion_config">
   </div>
+
   <div class="form-row">
-      <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-      <input type="text" id="node-input-name" placeholder="Name">
+      <label for="node-input-verbosity"><i class="fa fa-list-ul"></i> Verbosity</label>
+      <select id="node-input-verbosity" style="width:70%;">
+          <option value="active">Active</option>
+          <option value="passive">Passive</option>
+      </select>
   </div>
 </script>
 
@@ -132,6 +143,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   <h3>Details</h3>
     <p>Orion Push-To-Talk uses a custom audio encoding. Use the <b>Orion Decode</b>
     as an in-line transform to conver Orion Audio Encoding to WAV.</p>
+
+    <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
 <script type="text/javascript">
@@ -139,6 +152,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         category: 'Orion',
         defaults: {
             name: { value: '' },
+            verbosity: { value: 'active' },
             orion_config: { value: '', type: 'orion_config' },
         },
         color: '#0099ff',
@@ -163,12 +177,13 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-template-name="orion_tx">
   <div class="form-row">
-    <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
-    <input type='text' id="node-input-orion_config">
-  </div>
-  <div class="form-row">
       <label for="node-input-name"><i class="icon-tag"></i> Name</label>
       <input type="text" id="node-input-name" placeholder="Name">
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
+    <input type='text' id="node-input-orion_config">
   </div>
 </script>
 
@@ -228,6 +243,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
     <p>Orion Push-To-Talk uses a custom audio encoding. Use the <b>Orion Encode</b>
     as an in-line transform to convert WAV to Orion Audio Encoding.</p>
+
+    <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
 <script type="text/javascript">
@@ -259,15 +276,16 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-template-name="orion_decode">
     <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+    <div class="form-row">
         <label for="node-input-return_type"><i class="fa fa-list-ul"></i> Return Type</label>
         <select id="node-input-return_type" style="width:70%;">
             <option value="url">URL</option>
             <option value="buffer">Buffer</option>
         </select>
-    </div>
-    <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
     </div>
 </script>
 
@@ -300,6 +318,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   object.
   </p>
 
+  <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
 <script type="text/javascript">
@@ -361,6 +380,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   <p>Will accept media as either a URL <code>media_wav</code> or a binary buffer
   <code>media_buf</code>.
   </p>
+
+  <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
 <script type="text/javascript">
@@ -388,6 +409,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
+
     <div class="form-row">
       <label for="node-input-orion_config"><i class="icon-tag"></i> Config</label>
       <input type='text' id="node-input-orion_config">
@@ -436,6 +458,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   <code>userstatus_info</code> or <code>group_info</code> to the existing
   <code>msg</code> object.
   </p>
+
+  <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
 <script type="text/javascript">
