@@ -19,7 +19,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <input type='password' id="node-config-input-password">
   </div>
   <div class="form-row">
-    <label for="node-config-input-groupIds"><i class="icon-bookmark"></i> Groups (split:',')</label>
+    <label for="node-config-input-groupIds"><i class="icon-bookmark"></i> Groups [sep:',']</label>
     <input type='text' id="node-config-input-groupIds">
   </div>
   <div class="form-row">
@@ -76,6 +76,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
       <select id="node-input-verbosity" style="width:70%;">
           <option value="active">Active</option>
           <option value="passive">Passive</option>
+          <option value="debug">Debug</option>
       </select>
   </div>
 </script>
@@ -86,6 +87,12 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <ul>
       <li>Push-To-Talk (PTT)</li>
       <li>User Status</li>
+    </ul>
+    Events are split into 3 possible outputs:
+    <ul>
+      <li>Output 0 - All Events (ptt, userstatus, et al.)</li>
+      <li>Output 1 - Push-to-Talk Events Only (ptt)</li>
+      <li>Output 2 - User Status Events Only (userstatus)</li>
     </ul>
   </p>
 
@@ -157,7 +164,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         },
         color: '#0099ff',
         inputs: 0,
-        outputs: 1,
+        outputs: 3,
         icon: 'orion_trapezium.png',
         label: function () {
             var level_node = RED.nodes.node(this.orion_config);
@@ -165,7 +172,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         },
         labelStyle: function () {
             return this.name ? 'node_label_italic' : '';
-        }
+        },
+        outputLabels: ['all', 'ptt', 'userstatus']
       }
     )
 </script>

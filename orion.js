@@ -86,6 +86,7 @@ module.exports = function(RED) {
       var node = this;
       var EventStream;
       var sessionId;
+      var verbosity = config.verbosity;
 
       node.orion_config = RED.nodes.getNode(config.orion_config);
       node.username = node.orion_config.credentials.username;
@@ -100,8 +101,19 @@ module.exports = function(RED) {
       // Called for every Event received from the Event Stream:
       function eventCallback(data) {
         node.status({fill: 'green', shape: 'dot', text: 'Receiving'});
-        node.send(data);
+        switch (data.event_type) {
+          case 'ptt':
+            node.send([data, data, null]);
+            break;
+          case 'userstatus':
+            node.send([data, null, data]);
+            break;
+          default:
+            node.send([data, null, null]);
+            break;
+        }
         node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+        return;
       }
 
       // Called after Auth to connect to Event Stream:
@@ -123,27 +135,46 @@ module.exports = function(RED) {
             method: 'GET',
             headers: {'Authorization': auth.token},
             timeout: 120000,
+            qs: {'verbosity': verbosity},
           };
 
           node.debug('Connecting to Event Stream.');
 
           EventStream = request(esOptions, function(error) {
             if (error) {
-              node.error('error.code=' + error.code);
-              node.error(error.code === 'ETIMEDOUT');
+              node.debug('error.code=' + error.code);
+              // node.error(error.code === 'ETIMEDOUT');
 
               // Set to `true` if the timeout was a connection timeout,
               // `false` or `undefined` otherwise.
-              node.error('error.connect=' + error.connect);
-              node.error(error.connect === true);
+              node.debug('error.connect=' + error.connect);
+              // node.error(error.connect === true);
 
-              node.status({fill: 'red', shape: 'dot', text: error});
+              node.status(
+                {fill: 'red', shape: 'dot', text: JSON.stringify(error)});
             } else {
               node.error('In error function but no error.');
 
               node.status({
                   fill: 'yellow', shape: 'dot', text: 'Unknown State',
               });
+            }
+
+            node.error(
+              'Encountered a connection error (' + error.code +
+              '). Reconnecting...');
+
+            node.status({
+                fill: 'yellow', shape: 'dot', text: 'Reconnecting',
+            });
+
+            try {
+              orion.logout(sessionId);
+            } catch (error) {
+              node.debug('Caught error="' + error + '" when logging out.');
+            } finally {
+              return orion.auth(
+                node.username, node.password, eventStreamCallback);
             }
           });
 
@@ -156,18 +187,15 @@ module.exports = function(RED) {
                   .then(function(response) {
                     node.debug('Pong succeeded.');
                     node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
-                    eventCallback(data);
                   })
                   .catch(function(response) {
                     node.debug('Pong failed, calling engage()');
                     node.status(
                       {fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
                     orion.engage(auth.token, groupIds);
-                    eventCallback(data);
                   });
-              } else {
-                eventCallback(data);
               }
+              return eventCallback(data);
             }
           ));
         }
