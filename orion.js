@@ -160,9 +160,14 @@ module.exports = function(RED) {
               });
             }
 
-            node.error(
-              'Encountered a connection error (' + error.code +
-              '). Reconnecting...');
+            if (error.code) {
+              node.error(
+                'Encountered a connection error (' + error.code +
+                '). Reconnecting...');
+            } else {
+              node.error(
+                'Encountered a connection error. Reconnecting...');
+            }
 
             node.status({
                 fill: 'yellow', shape: 'dot', text: 'Reconnecting',
