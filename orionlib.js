@@ -23,6 +23,7 @@ var OCHRE_URL = 'https://ochre.api.orionaster.com/ochre';
 var LOCRIS_OV2WAV = 'https://locris.api.orionaster.com/ov2wav';
 var LOCRIS_WAV2OV = 'https://locris.api.orionaster.com/wav2ov';
 
+
 // Login to Orion and retrieve a Auth Token, then call callback:
 function auth(username, password, callback) {
   request({
@@ -31,11 +32,11 @@ function auth(username, password, callback) {
     json: {'uid': username, 'password': password},
   }, function(error, response, body) {
     if (error) {
-      callback({error: error});
+      return callback({error: error});
     } else if (response.statusCode !== 200) {
-      callback({error: 'Auth Status Code != 200'});
+      return callback({error: 'Auth Status Code != 200'});
     } else if (response.statusCode === 200) {
-      callback(body);
+      return callback(body);
     }
   });
 }
@@ -94,7 +95,7 @@ function engage(token, groupIds) {
   */
   var engageTimer = setTimeout(function() {
     console.log(Date() + ' Engage Timeout.');
-    engage(token, groupIds);
+    return engage(token, groupIds);
   }, 360000);
 
   function engageCallback(error, response, body) {
@@ -103,7 +104,7 @@ function engage(token, groupIds) {
     } else if (response.statusCode === 409) {
       console.log(Date() + ' Re-engaging.');
       clearTimeout(engageTimer);
-      engage(token, groupIds);
+      return engage(token, groupIds);
     } else if (!error && response.statusCode === 200) {
       console.log(Date() + ' Engaged.');
     } else {
@@ -111,7 +112,7 @@ function engage(token, groupIds) {
     }
   }
 
-  request(engageOptions, engageCallback);
+  return request(engageOptions, engageCallback);
 }
 exports.engage = engage;
 
