@@ -141,7 +141,7 @@ module.exports = function(RED) {
           node.debug('Connecting to Event Stream.');
 
           EventStream = request(esOptions, function(error) {
-            if (error) {
+            if (error && error.hasOwnProperty('code')) {
               node.debug('error.code=' + error.code);
               // node.error(error.code === 'ETIMEDOUT');
 
@@ -152,19 +152,15 @@ module.exports = function(RED) {
 
               node.status(
                 {fill: 'red', shape: 'dot', text: JSON.stringify(error)});
-            } else {
-              node.error('In error function but no error.');
 
-              node.status({
-                  fill: 'yellow', shape: 'dot', text: 'Unknown State',
-              });
-            }
-
-            if (error.code) {
               node.error(
                 'Encountered a connection error (' + error.code +
                 '). Reconnecting...');
+
             } else {
+              node.status({
+                  fill: 'yellow', shape: 'dot', text: 'Unknown State',
+              });
               node.error(
                 'Encountered a connection error. Reconnecting...');
             }
