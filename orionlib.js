@@ -24,13 +24,18 @@ var request = require('requestretry').defaults({
     if (response) {
       if (response.hasOwnProperty('statusCode')) {
         if (response.statusCode >= 400) {
+          console.debug(Date() +
+            ' requestretry response.statusCode=' + response.statusCode);
+          console.debug(Date() +
+            ' requestretry body=' + JSON.stringify(body));
           return response.statusCode;
         }
       }
     } else if (err) {
+      console.log('requestretry err=' + err);
       return err;
     }
-  }
+  },
 });
 
 

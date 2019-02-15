@@ -24,13 +24,18 @@ var request = require('requestretry').defaults({
     if (response) {
       if (response.hasOwnProperty('statusCode')) {
         if (response.statusCode >= 400) {
+          console.debug(Date() +
+            ' requestretry response.statusCode=' + response.statusCode);
+          console.debug(Date() +
+            ' requestretry body=' + JSON.stringify(body));
           return response.statusCode;
         }
       }
     } else if (err) {
+      console.log('requestretry err=' + err);
       return err;
     }
-  }
+  },
 });
 
 
@@ -98,58 +103,61 @@ module.exports = function(RED) {
     Node for Receiving (RX) events from Orion.
   */
   function OrionRXNode(config) {
-      RED.nodes.createNode(this, config);
-      var node = this;
-      var EventStream;
-      var sessionId;
-      var verbosity = config.verbosity;
+    RED.nodes.createNode(this, config);
+    var node = this;
+    var EventStream;
+    var sessionId;
+    var token;
+    var verbosity = config.verbosity;
 
-      node.orion_config = RED.nodes.getNode(config.orion_config);
-      node.username = node.orion_config.credentials.username;
-      node.password = node.orion_config.credentials.password;
-      var groupIds = node.orion_config.groupIds.split(',');
+    node.orion_config = RED.nodes.getNode(config.orion_config);
+    node.username = node.orion_config.credentials.username;
+    node.password = node.orion_config.credentials.password;
+    var groupIds = node.orion_config.groupIds.split(',');
 
-      var esURL = 'https://api.orionlabs.io/api/ptt/' + groupIds.join('+');
-      node.debug('esURL=' + esURL);
+    var esURL = 'https://api.orionlabs.io/api/ptt/' + groupIds.join('+');
+    node.debug('esURL=' + esURL);
 
-      node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
+    node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
 
-      // Called for every Event received from the Event Stream:
-      function eventCallback(data) {
-        node.status({fill: 'green', shape: 'dot', text: 'Receiving'});
-        switch (data.event_type) {
-          case 'ptt':
-            node.send([data, data, null]);
-            break;
-          case 'userstatus':
-            node.send([data, null, data]);
-            break;
-          default:
-            node.send([data, null, null]);
-            break;
-        }
-        node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
-        return;
+    // Called for every Event received from the Event Stream:
+    function eventCallback(data) {
+      node.status({fill: 'green', shape: 'dot', text: 'Receiving'});
+      switch (data.event_type) {
+        case 'ptt':
+          node.send([data, data, null]);
+          break;
+        case 'userstatus':
+          node.send([data, null, data]);
+          break;
+        default:
+          node.send([data, null, null]);
+          break;
       }
+      node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+      return;
+    }
 
-      // Called after Auth to connect to Event Stream:
-      function eventStreamCallback(auth) {
-        if (auth.error) {
-          console.error(auth.error);
-          node.status({fill: 'red', shape: 'dot', text: auth.error});
-        } else if (!auth.token) {
-          console.error('No Auth Token');
+    function eventStreamCallback(error, response, body) {
+      if (error) {
+        node.status({fill: 'red', shape: 'dot', text: error});
+      } else if (response.statusCode !== 200) {
+        node.status(
+          {fill: 'red', shape: 'dot', text: 'Auth Status Code != 200'});
+      } else if (response.statusCode === 200) {
+        if (!body.token) {
           node.status({fill: 'red', shape: 'dot', text: 'No Auth Token'});
-        } else if (auth.token && auth.sessionId) {
-          sessionId = auth.sessionId;
+        } else if (body.token && body.sessionId) {
+          sessionId = body.sessionId;
+          token = body.token;
 
-          orion.engage(auth.token, groupIds);
+          orion.engage(token, groupIds);
           node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
 
           var esOptions = {
             url: esURL,
             method: 'GET',
-            headers: {'Authorization': auth.token},
+            headers: {'Authorization': token},
             timeout: 120000,
             qs: {'verbosity': verbosity},
           };
@@ -172,12 +180,11 @@ module.exports = function(RED) {
               node.error(
                 'Encountered a connection error (' + error.code +
                 '). Reconnecting...');
-
             } else {
               node.status({
                   fill: 'yellow', shape: 'dot', text: 'Unknown State',
               });
-              //node.error('error=' + error);
+              // node.error('error=' + error);
               node.error(
                 'Encountered a connection error. Reconnecting...');
             }
@@ -190,9 +197,6 @@ module.exports = function(RED) {
               orion.logout(sessionId);
             } catch (error) {
               node.debug('Caught error="' + error + '" when logging out.');
-            } finally {
-              return orion.auth(
-                node.username, node.password, eventStreamCallback);
             }
           });
 
@@ -201,30 +205,36 @@ module.exports = function(RED) {
               if (data.event_type === 'ping') {
                 node.debug('Ping Received.');
                 // Respond to Engage's Ping/Pong
-                orion.pong(auth.token)
+                orion.pong(token)
                   .then(function(response) {
                     node.debug('Pong succeeded.');
-                    node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
+                    node.status(
+                        {fill: 'green', shape: 'dot', text: 'Engaged'});
                   })
                   .catch(function(response) {
                     node.debug('Pong failed, calling engage()');
                     node.status(
                       {fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
-                    orion.engage(auth.token, groupIds);
+                    orion.engage(token, groupIds);
                   });
               }
               return eventCallback(data);
             }
           ));
         }
+      }
     }
 
-    orion.auth(node.username, node.password, eventStreamCallback);
+    request({
+      url: 'https://api.orionlabs.io/api/login',
+      method: 'POST',
+      json: {'uid': node.username, 'password': node.password},
+    }, eventStreamCallback);
 
     node.on('close', function() {
       node.debug('Closing');
       EventStream.abort();
-      orion.logout(sessionId);
+      // orion.logout(sessionId);
       node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
     });
   }
