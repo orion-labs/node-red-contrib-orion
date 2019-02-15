@@ -15,8 +15,24 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 'use strict';
 
-var request = require('request');
 var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
+
+var request = require('requestretry').defaults({
+  maxAttempts: 10,
+  retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
+  retryStrategy: function myRetryStrategy(err, response, body, options) {
+    if (response) {
+      if (response.hasOwnProperty('statusCode')) {
+        if (response.statusCode >= 400) {
+          return response.statusCode;
+        }
+      }
+    } else if (err) {
+      return err;
+    }
+  }
+});
+
 
 var LYRE_URL = 'https://lyre.api.orionaster.com/lyre';
 var OCHRE_URL = 'https://ochre.api.orionaster.com/ochre';

@@ -13,10 +13,26 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 'use strict';
 
-var request = require('request');
 var es = require('event-stream');
 var JSONStream = require('JSONStream');
 var orion = require('./orionlib.js');
+
+var request = require('requestretry').defaults({
+  maxAttempts: 10,
+  retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
+  retryStrategy: function myRetryStrategy(err, response, body, options) {
+    if (response) {
+      if (response.hasOwnProperty('statusCode')) {
+        if (response.statusCode >= 400) {
+          return response.statusCode;
+        }
+      }
+    } else if (err) {
+      return err;
+    }
+  }
+});
+
 
 module.exports = function(RED) {
   /*
@@ -161,6 +177,7 @@ module.exports = function(RED) {
               node.status({
                   fill: 'yellow', shape: 'dot', text: 'Unknown State',
               });
+              //node.error('error=' + error);
               node.error(
                 'Encountered a connection error. Reconnecting...');
             }
