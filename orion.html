@@ -79,6 +79,13 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
           <option value="debug">Debug</option>
       </select>
   </div>
+
+  <div class="form-row">
+     <label>&nbsp;</label>
+     <input type="checkbox" id="node-input-ignoreSelf" style="display: inline-block; width: auto; vertical-align: top;">
+     <label for="node-input-ignoreSelf" style="width: 70%;"> Ignore Self</label>
+ </div>
+
 </script>
 
 <script type="text/x-red" data-help-name="orion_rx">
@@ -146,6 +153,10 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <dd>User's state in each Group.</dd>
 
   </dl>
+  <p></p>
+    Check the <b>Ignore Self</b> Setting to ignore User Status and PTT events
+    from yourself.
+  <p></p>
 
   <h3>Details</h3>
     <p>Orion Push-To-Talk uses a custom audio encoding. Use the <b>Orion Decode</b>
@@ -160,6 +171,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         defaults: {
             name: { value: '' },
             verbosity: { value: 'active' },
+            ignoreSelf: { value: false },
             orion_config: { value: '', type: 'orion_config' },
         },
         color: '#0099ff',
