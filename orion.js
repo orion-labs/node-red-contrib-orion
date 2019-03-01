@@ -108,7 +108,9 @@ module.exports = function(RED) {
     var EventStream;
     var sessionId;
     var token;
+    var user_id;
     var verbosity = config.verbosity;
+    var ignoreSelf = config.ignoreSelf;
 
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
@@ -125,10 +127,18 @@ module.exports = function(RED) {
       node.status({fill: 'green', shape: 'dot', text: 'Receiving'});
       switch (data.event_type) {
         case 'ptt':
-          node.send([data, data, null]);
+          if (!ignoreSelf) {
+            node.send([data, data, null]);
+          } else if (user_id !== data.sender) {
+            node.send([data, data, null]);
+          }
           break;
         case 'userstatus':
-          node.send([data, null, data]);
+          if (!ignoreSelf) {
+            node.send([data, null, data]);
+          } else if (user_id !== data.id) {
+            node.send([data, null, data]);
+          }
           break;
         default:
           node.send([data, null, null]);
@@ -150,6 +160,7 @@ module.exports = function(RED) {
         } else if (body.token && body.sessionId) {
           sessionId = body.sessionId;
           token = body.token;
+          user_id = body.id;
 
           orion.engage(token, groupIds);
           node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
