@@ -16,12 +16,17 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   </div>
   <div class="form-row">
     <label for="node-config-input-password"><i class="icon-bookmark"></i> Password</label>
-    <input type='password' id="node-config-input-password">
+    <input type='text' id="node-config-input-password">
   </div>
+
   <div class="form-row">
     <label for="node-config-input-groupIds"><i class="icon-bookmark"></i> Groups [sep:',']</label>
-    <input type='text' id="node-config-input-groupIds">
   </div>
+
+  <div class="form-row node-text-editor-row">
+    <div style="height: 250px; min-height:150px;" class="node-text-editor" id="node-config-input-groupIds"></div>
+  </div>
+
   <div class="form-row">
       <label for="node-input-name"><i class="icon-tag"></i> Name</label>
       <input type="text" id="node-config-input-name" placeholder="Name">
@@ -44,13 +49,53 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         },
         credentials: {
             username: { type: 'text' },
-            password: { type: 'password' }
+            password: { type: 'text' }
         },
         label: function () {
             return this.name || this.credentials.username + '@' + this.groupIds[0];
         },
         labelStyle: function () {
             return this.name ? 'node_label_italic' : '';
+        },
+        oneditprepare: function() {
+            var that = this;
+            this.editor = RED.editor.createEditor({
+                id: 'node-config-input-groupIds',
+                mode: 'ace/mode/text',
+                value: $("#node-config-input-groupIds").val()
+            });
+
+            this.editor.focus();
+        },
+        oneditsave: function() {
+            var annot = this.editor.getSession().getAnnotations();
+            this.noerr = 0;
+            $("#node-config-input-noerr").val(0);
+            for (var k=0; k < annot.length; k++) {
+                //console.log(annot[k].type,":",annot[k].text, "on line", annot[k].row);
+                if (annot[k].type === "error") {
+                    $("#node-input-noerr").val(annot.length);
+                    this.noerr = annot.length;
+                }
+            }
+            $("#node-config-input-groupIds").val(this.editor.getValue());
+            this.editor.destroy();
+            delete this.editor;
+        },
+        oneditcancel: function() {
+            this.editor.destroy();
+            delete this.editor;
+        },
+        oneditresize: function(size) {
+            var rows = $("#dialog-form>div:not(.node-text-editor-row)");
+            var height = $("#dialog-form").height();
+            for (var i=0; i<rows.size(); i++) {
+                height -= $(rows[i]).outerHeight(true);
+            }
+            var editorRow = $("#dialog-form>div.node-text-editor-row");
+            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
+            $(".node-text-editor").css("height",height+"px");
+            this.editor.resize();
         }
     });
 </script>
@@ -100,6 +145,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
       <li>Output 0 - All Events (ptt, userstatus, et al.)</li>
       <li>Output 1 - Push-to-Talk Events Only (ptt)</li>
       <li>Output 2 - User Status Events Only (userstatus)</li>
+      <li>Output 3 - Direct (One-to-One) Push-to-Talk Events Only (ptt)</li>
     </ul>
   </p>
 
@@ -176,7 +222,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         },
         color: '#0099ff',
         inputs: 0,
-        outputs: 3,
+        outputs: 4,
         icon: 'orion_trapezium.png',
         label: function () {
             var level_node = RED.nodes.node(this.orion_config);
@@ -185,7 +231,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
         labelStyle: function () {
             return this.name ? 'node_label_italic' : '';
         },
-        outputLabels: ['all', 'ptt', 'userstatus']
+        outputLabels: ['all', 'ptt', 'userstatus', 'direct']
       }
     )
 </script>
@@ -359,7 +405,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 <!-- END orion_decode -->
 
 
-<!-- START orion_decode -->
+<!-- START orion_encode -->
 
 <script type="text/x-red" data-template-name="orion_encode">
     <div class="form-row">
@@ -419,7 +465,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     });
 </script>
 
-<!-- END orion_decode -->
+<!-- END orion_encode -->
 
 
 <!-- START orion_lookup -->
@@ -501,3 +547,66 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 </script>
 
 <!-- END orion_lookup -->
+
+
+<!-- START orion_transcribe -->
+
+<script type="text/x-red" data-template-name="orion_transcribe">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_transcribe">
+  <p>Orion Encode Node. Encodes WAV to Orion Audio Format.</p>
+
+  <h3>Inputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media_wav <span class="property-type">string</span></dt>
+    <dd>URL to WAV file to convert to Orion Audio Format.</dd>
+
+    <dt>media_buf <span class="property-type">string</span></dt>
+    <dd>Binary Buffer of WAV to convert to Orion Audio Format.</dd>
+
+  </dl>
+
+  <h3>Outputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to Orion Audio Format after conversion.</dd>
+
+  </dl>
+
+  <h3>Details</h3>
+  <p>This Node is intended to be used as a Transform. That is, place this Node
+  in-line and it will append <code>media</code> to the existing <code>msg</code>
+  object.
+  </p>
+  <p>Will accept media as either a URL <code>media_wav</code> or a binary buffer
+  <code>media_buf</code>.
+  </p>
+
+  <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_transcribe', {
+        category: 'Orion',
+        color: '#0099ff',
+        defaults: { name: { value: '' } },
+        inputs:1,
+        outputs:1,
+        icon: 'orion_trapezium.png',
+        label: function () { return this.name || 'Orion Transcribe'; },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+    });
+</script>
+
+<!-- END orion_transcribe -->
