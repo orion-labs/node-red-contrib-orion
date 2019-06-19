@@ -54,10 +54,10 @@ module.exports = function(RED) {
   RED.nodes.registerType('orion_config', OrionConfig, {
     credentials: {
       username: {type: 'text'},
-      password: {type: 'password'},
+      password: {type: 'text'},
     },
   });
-
+// .replace(/(\r\n|\n|\r)/gm, '')
   /*
   OrionTXNode
     Node for Transmitting (TX) events to Orion.
@@ -68,15 +68,17 @@ module.exports = function(RED) {
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
-    var groupIds = node.orion_config.groupIds.split(',');
+    var groupIds = node.orion_config.groupIds;
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
     node.on('input', function(msg) {
+      var _groupIds = msg.hasOwnProperty('groupIds') ? msg.groupIds : groupIds.replace(/(\r\n|\n|\r)/gm, '')
+
       var lyreOptions = {
         'username': node.username,
         'password': node.password,
-        'groupIds': msg.hasOwnProperty('groupIds') ? msg.groupIds : groupIds,
+        'groupIds': _groupIds.split(','),
         'message': msg.hasOwnProperty('message') ? msg.message : null,
         'media': msg.hasOwnProperty('media') ? msg.media : null,
         'target': msg.hasOwnProperty('target') ? msg.target : null,
@@ -94,7 +96,7 @@ module.exports = function(RED) {
   RED.nodes.registerType('orion_tx', OrionTXNode, {
     credentials: {
       username: {type: 'text'},
-      password: {type: 'password'},
+      password: {type: 'text'},
     },
   });
 
@@ -115,7 +117,7 @@ module.exports = function(RED) {
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
-    var groupIds = node.orion_config.groupIds.split(',');
+    var groupIds = node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
 
     var esURL = 'https://api.orionlabs.io/api/ptt/' + groupIds.join('+');
     node.debug('esURL=' + esURL);
@@ -127,21 +129,28 @@ module.exports = function(RED) {
       node.status({fill: 'green', shape: 'dot', text: 'Receiving'});
       switch (data.event_type) {
         case 'ptt':
-          if (!ignoreSelf) {
-            node.send([data, data, null]);
-          } else if (user_id !== data.sender) {
-            node.send([data, data, null]);
+          /*
+          If 'ignoreSelf' is False: Send PTTs (target and group).
+          if 'ignoreSelf' is True: Send PTTs (target and group) as long as
+            they ARE NOT from me! (Stop hitting yourself!)
+          */
+          if (!ignoreSelf || user_id !== data.sender) {
+            node.send([
+              data,  // Output 0 (all)
+              data,  // Output 1 (ptt)
+              null,  // Output 2 (userstatus)
+              // 'target_user_id' is only set on direct/target messages
+              data.hasOwnProperty('target_user_id') ? data : null  // Output 3 (direct/target)
+            ]);
           }
           break;
         case 'userstatus':
-          if (!ignoreSelf) {
-            node.send([data, null, data]);
-          } else if (user_id !== data.id) {
-            node.send([data, null, data]);
+          if (!ignoreSelf || user_id !== data.id) {
+            node.send([data, null, data, null]);
           }
           break;
         default:
-          node.send([data, null, null]);
+          node.send([data, null, null, null]);
           break;
       }
       node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
@@ -253,7 +262,7 @@ module.exports = function(RED) {
   RED.nodes.registerType('orion_rx', OrionRXNode, {
     credentials: {
       username: {type: 'text'},
-      password: {type: 'password'},
+      password: {type: 'text'},
       groupIds: {type: 'text'},
     },
   });
@@ -293,6 +302,31 @@ module.exports = function(RED) {
   }
   RED.nodes.registerType('orion_encode', OrionEncode);
 
+  /*
+  OrionTranscribe
+    Node for Transcribing Orion audio format media.
+  */
+  function OrionTranscribe(config) {
+    RED.nodes.createNode(this, config);
+    var node = this;
+
+    node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+
+    function sttCallback(response) {
+      node.send(response);
+    }
+
+    node.on('input', function(msg) {
+      if (msg.hasOwnProperty('media')) {
+        node.status({fill: 'green', shape: 'dot', text: 'Encoding'});
+        orion.locrisSTT(msg, sttCallback);
+        node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+      } else {
+        node.send(msg);
+      }
+    });
+  }
+  RED.nodes.registerType('orion_transcribe', OrionTranscribe);
 
   /*
   OrionDecode
@@ -357,7 +391,7 @@ module.exports = function(RED) {
   RED.nodes.registerType('orion_lookup', OrionLookup, {
     credentials: {
       username: {type: 'text'},
-      password: {type: 'password'},
+      password: {type: 'text'},
     },
   });
 };
