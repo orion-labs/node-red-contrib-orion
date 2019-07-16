@@ -166,6 +166,10 @@ function lyre(options) {
 
   authPromise(options.username, options.password)
     .then(function(auth) {
+      var target = options.target || null;
+      if (options.target_self) {
+        target = auth.id;
+      }
       request({
         url: lyreUrl,
         method: 'POST',
@@ -174,7 +178,7 @@ function lyre(options) {
           'group_ids': options.groupIds,
           'message': options.message || null,
           'media': options.media || null,
-          'target': options.target || null,
+          'target': target,
         },
       },
       function(err, response, body) {

@@ -82,6 +82,7 @@ module.exports = function(RED) {
         'message': msg.hasOwnProperty('message') ? msg.message : null,
         'media': msg.hasOwnProperty('media') ? msg.media : null,
         'target': msg.hasOwnProperty('target') ? msg.target : null,
+        'target_self': msg.hasOwnProperty('target_self') ? msg.target_self : null
       };
       node.status({fill: 'green', shape: 'dot', text: 'Transmitting'});
       orion.lyre(lyreOptions);
