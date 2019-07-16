@@ -559,17 +559,14 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 </script>
 
 <script type="text/x-red" data-help-name="orion_transcribe">
-  <p>Orion Encode Node. Encodes WAV to Orion Audio Format.</p>
+  <p>Orion Trascribe Node. Transcribes Orion Audio to Text.</p>
 
   <h3>Inputs</h3>
 
   <dl class="message-properties">
 
-    <dt>media_wav <span class="property-type">string</span></dt>
-    <dd>URL to WAV file to convert to Orion Audio Format.</dd>
-
-    <dt>media_buf <span class="property-type">string</span></dt>
-    <dd>Binary Buffer of WAV to convert to Orion Audio Format.</dd>
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to Orion audio file to trascribe to text.</dd>
 
   </dl>
 
@@ -577,18 +574,15 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
   <dl class="message-properties">
 
-    <dt>media <span class="property-type">string</span></dt>
-    <dd>URL to Orion Audio Format after conversion.</dd>
+    <dt>trascript <span class="property-type">string</span></dt>
+    <dd>Transcribed text of Orion Audio.</dd>
 
   </dl>
 
   <h3>Details</h3>
   <p>This Node is intended to be used as a Transform. That is, place this Node
-  in-line and it will append <code>media</code> to the existing <code>msg</code>
+  in-line and it will append <code>transcript</code> to the existing <code>msg</code>
   object.
-  </p>
-  <p>Will accept media as either a URL <code>media_wav</code> or a binary buffer
-  <code>media_buf</code>.
   </p>
 
   <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
