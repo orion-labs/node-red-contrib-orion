@@ -76,6 +76,8 @@ module.exports = function(RED) {
       var _groupIds = msg.hasOwnProperty('groupIds') ? msg.groupIds : node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '')
       if (typeof _groupIds === 'string') {
         groupIds = _groupIds.split(',')
+      } else {
+        groupIds = _groupIds;
       }
 
       var lyreOptions = {
