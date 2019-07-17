@@ -77,8 +77,8 @@ module.exports = function(RED) {
 
       var lyreOptions = {
         'username': node.username,
-        'password': typeof groupIds === 'string' ? groupIds.split(',') : groupIds,
-        'groupIds': groupIds,
+        'password': node.password,
+        'groupIds': typeof groupIds === 'string' ? groupIds.split(',') : groupIds,
         'message': msg.hasOwnProperty('message') ? msg.message : null,
         'media': msg.hasOwnProperty('media') ? msg.media : null,
         'target': msg.hasOwnProperty('target') ? msg.target : null,
