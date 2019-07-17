@@ -68,17 +68,20 @@ module.exports = function(RED) {
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
-    var groupIds = node.orion_config.groupIds;
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
     node.on('input', function(msg) {
-      var _groupIds = msg.hasOwnProperty('groupIds') ? msg.groupIds : groupIds.replace(/(\r\n|\n|\r)/gm, '')
+      var groupIds;
+      var _groupIds = msg.hasOwnProperty('groupIds') ? msg.groupIds : node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '')
+      if (typeof _groupIds === 'string') {
+        groupIds = _groupIds.split(',')
+      }
 
       var lyreOptions = {
         'username': node.username,
         'password': node.password,
-        'groupIds': _groupIds.split(','),
+        'groupIds': groupIds,
         'message': msg.hasOwnProperty('message') ? msg.message : null,
         'media': msg.hasOwnProperty('media') ? msg.media : null,
         'target': msg.hasOwnProperty('target') ? msg.target : null,
