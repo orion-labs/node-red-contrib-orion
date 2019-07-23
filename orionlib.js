@@ -95,7 +95,7 @@ exports.logout = logout;
 'Engage' with the Orion Event Stream.
 Ensures user Presence for asyncronous stream connections (APN).
 */
-function engage(token, groupIds) {
+function engage(token, groupIds, verbosity) {
   console.log(Date() + ' engage() groupIds=' + groupIds);
 
   var engageOptions = {
@@ -105,7 +105,7 @@ function engage(token, groupIds) {
     json: {
       seqnum: Date.now(),
       groupIds: groupIds,
-      destinations: [{destination: 'EventStream', verbosity: 'active'}],
+      destinations: [{destination: 'EventStream', verbosity: verbosity}],
     },
   };
 

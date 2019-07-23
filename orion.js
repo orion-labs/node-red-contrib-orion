@@ -13,31 +13,9 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 'use strict';
 
-var es = require('event-stream');
-var JSONStream = require('JSONStream');
+var WebSocket = require('ws');
+
 var orion = require('./orionlib.js');
-
-var request = require('requestretry').defaults({
-  maxAttempts: 10,
-  retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
-  retryStrategy: function myRetryStrategy(err, response, body, options) {
-    if (response) {
-      if (response.hasOwnProperty('statusCode')) {
-        if (response.statusCode >= 400) {
-          console.debug(Date() +
-            ' requestretry response.statusCode=' + response.statusCode);
-          console.debug(Date() +
-            ' requestretry body=' + JSON.stringify(body));
-          return response.statusCode;
-        }
-      }
-    } else if (err) {
-      console.log('requestretry err=' + err);
-      return err;
-    }
-  },
-});
-
 
 module.exports = function(RED) {
   /*
@@ -57,7 +35,7 @@ module.exports = function(RED) {
       password: {type: 'text'},
     },
   });
-// .replace(/(\r\n|\n|\r)/gm, '')
+
   /*
   OrionTXNode
     Node for Transmitting (TX) events to Orion.
@@ -108,20 +86,19 @@ module.exports = function(RED) {
   function OrionRXNode(config) {
     RED.nodes.createNode(this, config);
     var node = this;
-    var EventStream;
-    var sessionId;
     var token;
     var user_id;
+    var ws;
+    var emsg;
+
     var verbosity = config.verbosity;
     var ignoreSelf = config.ignoreSelf;
 
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
-    var groupIds = node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
 
-    var esURL = 'https://api.orionlabs.io/api/ptt/' + groupIds.join('+');
-    node.debug('esURL=' + esURL);
+    var groupIds = node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
 
     node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
 
@@ -154,108 +131,112 @@ module.exports = function(RED) {
           node.send([data, null, null, null]);
           break;
       }
-      node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+      node.status({fill: 'yellow', shape: 'dot', text: 'Connected & Idle'});
       return;
     }
 
-    function eventStreamCallback(error, response, body) {
-      if (error) {
-        node.status({fill: 'red', shape: 'dot', text: error});
-      } else if (response.statusCode !== 200) {
-        node.status(
-          {fill: 'red', shape: 'dot', text: 'Auth Status Code != 200'});
-      } else if (response.statusCode === 200) {
-        if (!body.token) {
-          node.status({fill: 'red', shape: 'dot', text: 'No Auth Token'});
-        } else if (body.token && body.sessionId) {
-          sessionId = body.sessionId;
-          token = body.token;
-          user_id = body.id;
+    orion.authPromise(node.username, node.password)
+        .then(
+            function(auth) {
+                if (!auth.token) {
+                    emsg = 'No Auth Token for username=' + node.username;
+                    node.error(emsg);
+                    node.status({fill: 'red', shape: 'dot', text: emsg});
+                } else if (auth.token) {
+                    token = auth.token;
+                    user_id = auth.id;
 
-          orion.engage(token, groupIds);
-          node.status({fill: 'green', shape: 'dot', text: 'Engaged'});
+                    orion.engage(token, groupIds, verbosity);
+                    node.status(
+                        {fill: 'green', shape: 'dot', text: 'Engaged (' + verbosity + ')'});
 
-          var esOptions = {
-            url: esURL,
-            method: 'GET',
-            headers: {'Authorization': token},
-            timeout: 120000,
-            qs: {'verbosity': verbosity},
-          };
+                    var ws_url = 'wss://alnilam.orionlabs.io/stream/wss'
+                    var ws_opts = {'headers': {'Authorization': token}}
 
-          node.debug('Connecting to Event Stream.');
+                    ws = new WebSocket(ws_url, ws_opts);
 
-          EventStream = request(esOptions, function(error) {
-            if (error && error.hasOwnProperty('code')) {
-              node.debug('error.code=' + error.code);
-              // node.error(error.code === 'ETIMEDOUT');
+                    ws.reconnect = function(err) {
+                        this.instance.removeAllListeners();
+                        var that = this;
+                        setTimeout(function() {
+                            console.log("WebSocket: reconnecting...");
+                            that.open(ws_url, ws_opts);
+                        }, 5 * 1000);
+                    }
 
-              // Set to `true` if the timeout was a connection timeout,
-              // `false` or `undefined` otherwise.
-              node.debug('error.connect=' + error.connect);
-              // node.error(error.connect === true);
+                    ws.onopen = function(err) {
+                        console.log('username=' + node.username + ' connected');
+                        node.status(
+                            {fill: 'green', shape: 'dot', text: 'Connected'});
+                    };
 
-              node.status(
-                {fill: 'red', shape: 'dot', text: JSON.stringify(error)});
+                    ws.onmessage = function(data, flags, number) {
+                        eventCallback(data);
+                    };
 
-              node.error(
-                'Encountered a connection error (' + error.code +
-                '). Reconnecting...');
-            } else {
-              node.status({
-                  fill: 'yellow', shape: 'dot', text: 'Unknown State',
-              });
-              // node.error('error=' + error);
-              node.error(
-                'Encountered a connection error. Reconnecting...');
-            }
+                    ws.onclose = function (err) {
+                        switch (err.code) {
+                        case 1000:  // CLOSE_NORMAL
+                            console.log("WebSocket: closed");
+                            break;
+                        default:  // Abnormal closure
+                            this.reconnect(err);
+                            break;
+                        }
+                        this.onclose(err);
+                    }
 
-            node.status({
-                fill: 'yellow', shape: 'dot', text: 'Reconnecting',
+                    ws.onerror =  function(err) {
+                        switch (err.code) {
+                        case 'ECONNREFUSED':
+                            this.reconnect(err);
+                            break;
+                        default:
+                            this.onerror(err);
+                            break;
+                        }
+                    }
+                }
+            },
+            function(error) {
+                if (error && error.hasOwnProperty('code')) {
+                    node.debug('error.code=' + error.code);
+                    // node.error(error.code === 'ETIMEDOUT');
+
+                    // Set to `true` if the timeout was a connection timeout,
+                    // `false` or `undefined` otherwise.
+                    node.debug('error.connect=' + error.connect);
+                    // node.error(error.connect === true);
+
+                    node.status(
+                        {fill: 'red', shape: 'dot', text: JSON.stringify(error)});
+
+                    node.error(
+                        'username=' +
+                        node.username +
+                        ' encountered a connection error (' +
+                        error.code +
+                        '). Reconnecting...'
+                    );
+                } else {
+                    node.status({
+                        fill: 'yellow', shape: 'dot', text: 'Unknown State',
+                    });
+                    // node.error('error=' + error);
+                    node.error(
+                        'username=' +
+                        node.username +
+                        ' encountered a connection error. Reconnecting...'
+                    );
+                }
+
+                node.status({
+                    fill: 'yellow', shape: 'dot', text: 'Reconnecting',
+                });
             });
-
-            try {
-              orion.logout(sessionId);
-            } catch (error) {
-              node.debug('Caught error="' + error + '" when logging out.');
-            }
-          });
-
-          EventStream.pipe(JSONStream.parse()).pipe(es.mapSync(
-            function(data) {
-              if (data.event_type === 'ping') {
-                node.debug('Ping Received.');
-                // Respond to Engage's Ping/Pong
-                orion.pong(token)
-                  .then(function(response) {
-                    node.debug('Pong succeeded.');
-                    node.status(
-                        {fill: 'green', shape: 'dot', text: 'Engaged'});
-                  })
-                  .catch(function(response) {
-                    node.debug('Pong failed, calling engage()');
-                    node.status(
-                      {fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
-                    orion.engage(token, groupIds);
-                  });
-              }
-              return eventCallback(data);
-            }
-          ));
-        }
-      }
-    }
-
-    request({
-      url: 'https://api.orionlabs.io/api/login',
-      method: 'POST',
-      json: {'uid': node.username, 'password': node.password},
-    }, eventStreamCallback);
 
     node.on('close', function() {
       node.debug('Closing');
-      EventStream.abort();
-      // orion.logout(sessionId);
       node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
     });
   }
@@ -283,16 +264,7 @@ module.exports = function(RED) {
     }
 
     node.on('input', function(msg) {
-      if (msg.hasOwnProperty('media_wav')) {
-        node.warn('DEPRECATED: Using "media_wav", use "payload" instead.');
-      }
-
-      if (msg.hasOwnProperty('media_buf')) {
-        node.warn('DEPRECATED: Using "media_buf", use "payload" instead.');
-      }
-
-      if (msg.hasOwnProperty('media_wav') || msg.hasOwnProperty('media_buf') ||
-          msg.hasOwnProperty('payload')) {
+      if (msg.hasOwnProperty('payload')) {
         node.status({fill: 'green', shape: 'dot', text: 'Encoding'});
         orion.locrisWAV2OV(msg, wav2ovCallback);
         node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
