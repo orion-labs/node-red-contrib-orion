@@ -14,7 +14,7 @@
         "request": "latest",
         "tmp": "latest",
         "xmlhttprequest": "latest",
-        "websocket": "latest"
+        "ws": "latest"
     },
     "repository": {
         "type": "git",
