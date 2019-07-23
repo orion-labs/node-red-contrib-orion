@@ -171,7 +171,7 @@ module.exports = function(RED) {
                     };
 
                     ws.onmessage = function(data, flags, number) {
-                        eventCallback(data.data);
+                        eventCallback(JSON.parse(data.data));
                     };
 
                     ws.onclose = function (err) {
