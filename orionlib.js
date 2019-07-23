@@ -98,6 +98,9 @@ Ensures user Presence for asyncronous stream connections (APN).
 function engage(token, groupIds, verbosity) {
   console.log(Date() + ' engage() groupIds=' + groupIds);
 
+  // Legacy EventStream 'debug' verbosity
+  var _verbosity = verbosity === 'debug' ? 'active' : verbosity;
+
   var engageOptions = {
     url: 'https://api.orionlabs.io/api/engage',
     method: 'POST',
@@ -105,7 +108,7 @@ function engage(token, groupIds, verbosity) {
     json: {
       seqnum: Date.now(),
       groupIds: groupIds,
-      destinations: [{destination: 'EventStream', verbosity: verbosity}],
+      destinations: [{destination: 'EventStream', verbosity: _verbosity}],
     },
   };
 
