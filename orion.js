@@ -17,6 +17,27 @@ var WebSocket = require('ws');
 
 var orion = require('./orionlib.js');
 
+var request = require('requestretry').defaults({
+  maxAttempts: 10,
+  retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
+  retryStrategy: function myRetryStrategy(err, response, body, options) {
+    if (response) {
+      if (response.hasOwnProperty('statusCode')) {
+        if (response.statusCode >= 400) {
+          console.debug(Date() +
+            ' requestretry response.statusCode=' + response.statusCode);
+          console.debug(Date() +
+            ' requestretry body=' + JSON.stringify(body));
+          return response.statusCode;
+        }
+      }
+    } else if (err) {
+      console.log('requestretry err=' + err);
+      return err;
+    }
+  },
+});
+
 module.exports = function(RED) {
   /*
   OrionConfig
@@ -43,20 +64,35 @@ module.exports = function(RED) {
   function OrionTXNode(config) {
     RED.nodes.createNode(this, config);
     var node = this;
+
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
-    var config_groupIds = node.orion_config.groupIds;
+    node.groupIds = node.orion_config.groupIds;
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
     node.on('input', function(msg) {
-      var groupIds = msg.hasOwnProperty('groupIds') ? msg.groupIds : config_groupIds.replace(/(\r\n|\n|\r)/gm, '')
+      var use_all_groups;
+      var groupIds = [];
+
+      // Enter as a String, exit as an Array.
+      if (msg.hasOwnProperty('groupIds') && typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
+          use_all_groups = true;
+      } else if (msg.hasOwnProperty('groupIds') && typeof msg.groupIds === 'string') {
+          use_all_groups = false;
+          groupIds = msg.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
+      } else if (typeof node.groupIds === 'string' && node.groupIds === 'ALL') {
+          use_all_groups = true;
+      } else if (typeof node.groupIds === 'string') {
+          groupIds = node.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
+      }
 
       var lyreOptions = {
         'username': node.username,
         'password': node.password,
-        'groupIds': typeof groupIds === 'string' ? groupIds.split(',') : groupIds,
+        'groupIds': groupIds,
+        'use_all_groups': use_all_groups,
         'message': msg.hasOwnProperty('message') ? msg.message : null,
         'media': msg.hasOwnProperty('media') ? msg.media : null,
         'target': msg.hasOwnProperty('target') ? msg.target : null,
@@ -90,6 +126,7 @@ module.exports = function(RED) {
     var user_id;
     var ws;
     var emsg;
+    var use_all_groups;
 
     var verbosity = config.verbosity;
     var ignoreSelf = config.ignoreSelf;
@@ -98,7 +135,14 @@ module.exports = function(RED) {
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
 
-    var groupIds = node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
+    var _groupIds = node.orion_config.groupIds;
+    if (_groupIds === 'ALL') {
+        use_all_groups = true;
+        node.groupIds = [];
+    } else {
+        use_all_groups = false;
+        node.groupIds = _groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
+    }
 
     node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
 
@@ -145,10 +189,35 @@ module.exports = function(RED) {
                 } else if (auth.token) {
                     token = auth.token;
                     user_id = auth.id;
-
-                    orion.engage(token, groupIds, verbosity);
-                    node.status(
-                        {fill: 'green', shape: 'dot', text: 'Engaged (' + verbosity + ')'});
+                    if (use_all_groups === true) {
+                        var url = 'https://api.orionlabs.io/api/users/' + user_id;
+                        console.log(Date() + ' ' + node.id + ' use_all_groups=true');
+                        request(
+                            {
+                                url: url,
+                                method: 'GET',
+                                headers: {'Authorization': token},
+                            },
+                            function(error, response, body) {
+                                if (error) {
+                                    console.log(Date() + ' get user error=' + error);
+                                    console.log(response);
+                                } else {
+                                    var body_groups = JSON.parse(body).groups;
+                                    body_groups.forEach(function (group) {
+                                        node.groupIds.push(group.id);
+                                    });
+                                    orion.engage(token, node.groupIds, verbosity);
+                                    node.status(
+                                        {fill: 'green', shape: 'dot', text: 'Engaged (' + verbosity + ')'});
+                                }
+                            }
+                        );
+                    } else {
+                        orion.engage(token, node.groupIds, verbosity);
+                        node.status(
+                            {fill: 'green', shape: 'dot', text: 'Engaged (' + verbosity + ')'});
+                    }
 
                     var ws_url = 'wss://alnilam.orionlabs.io/stream/wss'
                     var ws_opts = {'headers': {'Authorization': token}}
@@ -171,7 +240,24 @@ module.exports = function(RED) {
                     };
 
                     ws.onmessage = function(data, flags, number) {
-                        eventCallback(JSON.parse(data.data));
+                        var event_data = JSON.parse(data.data);
+                        if (event_data.event_type === 'ping') {
+                          node.debug('Ping Received.');
+                          // Respond to Engage's Ping/Pong
+                          orion.pong(token)
+                            .then(function(response) {
+                              node.debug('Pong succeeded.');
+                              node.status(
+                                  {fill: 'green', shape: 'dot', text: 'Engaged'});
+                            })
+                            .catch(function(response) {
+                              node.debug('Pong failed, calling engage()');
+                              node.status(
+                                {fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
+                              orion.engage(token, node.groupIds);
+                            });
+                        }
+                        eventCallback(event_data);
                     };
 
                     ws.onclose = function (err) {

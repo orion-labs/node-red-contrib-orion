@@ -166,29 +166,75 @@ exports.pong = pong;
 function lyre(options) {
   var lyreUrl = process.env.LYRE_URL || LYRE_URL;
   console.debug(Date() + ' lyreUrl=' + lyreUrl);
+  var token;
+  var user_id;
 
   authPromise(options.username, options.password)
     .then(function(auth) {
-      var target = options.target || null;
-      if (options.target_self) {
-        target = auth.id;
-      }
-      request({
-        url: lyreUrl,
-        method: 'POST',
-        json: {
-          'token': auth.token,
-          'group_ids': options.groupIds,
-          'message': options.message || null,
-          'media': options.media || null,
-          'target': target,
-        },
-      },
-      function(err, response, body) {
-        if (err) {
-          console.error(err);
+        token = auth.token;
+        user_id = auth.id;
+
+        var target = options.target || null;
+        if (options.target_self) {
+            target = user_id;
         }
-      });
+
+        if (options.use_all_groups === true) {
+            var url = 'https://api.orionlabs.io/api/users/' + user_id;
+            request(
+                {
+                    url: url,
+                    method: 'GET',
+                    headers: {'Authorization': token},
+                },
+                function(error, response, body) {
+                    if (error) {
+                        console.log(Date() + ' get user error=' + error);
+                        console.log(response);
+                    } else {
+                        var body_groups = JSON.parse(body).groups;
+                        body_groups.forEach(function (group) {
+                            options.groupIds.push(group.id);
+                        });
+                        console.log(Date() + ' lyre() groupIds=' + options.groupIds);
+                        request({
+                            url: lyreUrl,
+                            method: 'POST',
+                            json: {
+                                'token': auth.token,
+                                'group_ids': options.groupIds,
+                                'message': options.message || null,
+                                'media': options.media || null,
+                                'target': target,
+                            },
+                          },
+                          function(err, response, body) {
+                              if (err) {
+                                  console.error(err);
+                              }
+                        });
+                    }
+                }
+            );
+        } else {
+            console.log(Date() + ' lyre() groupIds=' + options.groupIds);
+            request({
+                url: lyreUrl,
+                method: 'POST',
+                json: {
+                    'token': auth.token,
+                    'group_ids': options.groupIds,
+                    'message': options.message || null,
+                    'media': options.media || null,
+                    'target': target,
+                },
+              },
+              function(err, response, body) {
+                if (err) {
+                    console.error(err);
+                }
+              });
+        }
     });
 }
 exports.lyre = lyre;
