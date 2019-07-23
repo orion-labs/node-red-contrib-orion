@@ -118,17 +118,19 @@ function engage(token, groupIds, verbosity) {
 
   The prescribed period is 5 minutes, or 300000 ms.
   */
+
+/*
   var engageTimer = setTimeout(function() {
     console.log(Date() + ' Engage Timeout.');
     return engage(token, groupIds);
   }, 360000);
-
+*/
   function engageCallback(error, response, body) {
     if (error) {
       console.log(Date() + ' Unable to Engage. error=' + error);
     } else if (response.statusCode === 409) {
       console.log(Date() + ' Re-engaging.');
-      clearTimeout(engageTimer);
+      //clearTimeout(engageTimer);
       return engage(token, groupIds);
     } else if (!error && response.statusCode === 200) {
       console.log(Date() + ' Engaged.');

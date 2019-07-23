@@ -38,6 +38,7 @@ var request = require('requestretry').defaults({
   },
 });
 
+
 module.exports = function(RED) {
   /*
   OrionConfig
@@ -222,66 +223,52 @@ module.exports = function(RED) {
                     var ws_url = 'wss://alnilam.orionlabs.io/stream/wss'
                     var ws_opts = {'headers': {'Authorization': token}}
 
-                    ws = new WebSocket(ws_url, ws_opts);
+                    function startWS() {
+                        ws = new WebSocket(ws_url, ws_opts);
+                        ws.onopen = function(evt) {
+                            console.log(Date() + ' ' + node.id + ' ws.onopen');
+                            node.status(
+                                {fill: 'green', shape: 'dot', text: 'Connected'});
+                        };
 
-                    ws.reconnect = function(err) {
-                        this.instance.removeAllListeners();
-                        var that = this;
-                        setTimeout(function() {
-                            console.log("WebSocket: reconnecting...");
-                            that.open(ws_url, ws_opts);
-                        }, 5 * 1000);
-                    }
+                        ws.onmessage = function(data, flags, number) {
+                            console.log(Date() + ' ' + node.id + ' ws.onmessage');
 
-                    ws.onopen = function(err) {
-                        console.log('username=' + node.username + ' connected');
-                        node.status(
-                            {fill: 'green', shape: 'dot', text: 'Connected'});
-                    };
+                            var event_data = JSON.parse(data.data);
+                            console.log(Date() + ' ' + node.id + ' event_data.event_type=' + event_data.event_type);
 
-                    ws.onmessage = function(data, flags, number) {
-                        var event_data = JSON.parse(data.data);
-                        if (event_data.event_type === 'ping') {
-                          node.debug('Ping Received.');
-                          // Respond to Engage's Ping/Pong
-                          orion.pong(token)
-                            .then(function(response) {
-                              node.debug('Pong succeeded.');
-                              node.status(
-                                  {fill: 'green', shape: 'dot', text: 'Engaged'});
-                            })
-                            .catch(function(response) {
-                              node.debug('Pong failed, calling engage()');
-                              node.status(
-                                {fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
-                              orion.engage(token, node.groupIds);
-                            });
-                        }
-                        eventCallback(event_data);
-                    };
+                            // Respond to Orion's in-band Ping/Pong (EventStream legacy)
+                            if (event_data.event_type === 'ping') {
+                              node.debug('Ping Received.');
+                              // Respond to Engage's Ping/Pong
+                              orion.pong(token)
+                                .then(function(response) {
+                                  node.debug('Pong succeeded.');
+                                  node.status(
+                                      {fill: 'green', shape: 'dot', text: 'Engaged'});
+                                })
+                                .catch(function(response) {
+                                  node.debug('Pong failed, calling engage()');
+                                  node.status(
+                                    {fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
+                                  orion.engage(token, node.groupIds);
+                                });
+                            }
 
-                    ws.onclose = function (err) {
-                        switch (err.code) {
-                        case 1000:  // CLOSE_NORMAL
-                            console.log("WebSocket: closed");
-                            break;
-                        default:  // Abnormal closure
-                            this.reconnect(err);
-                            break;
-                        }
-                        this.onclose(err);
-                    }
+                            eventCallback(event_data);
+                        };
 
-                    ws.onerror =  function(err) {
-                        switch (err.code) {
-                        case 'ECONNREFUSED':
-                            this.reconnect(err);
-                            break;
-                        default:
-                            this.onerror(err);
-                            break;
+                        ws.onclose = function (evt) {
+                          console.log(Date() + ' ' + node.id + ' ws.onclose err=' + evt.code);
+                            ws = null;
+                            setTimeout(function() {
+                                startWS();
+                            }, 5000);
                         }
                     }
+
+                    startWS();
+
                 }
             },
             function(error) {
