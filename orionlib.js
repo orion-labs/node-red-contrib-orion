@@ -17,25 +17,28 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
+
 var request = require('requestretry').defaults({
-  maxAttempts: 10,
-  retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
-  retryStrategy: function myRetryStrategy(err, response, body, options) {
-    if (response) {
-      if (response.hasOwnProperty('statusCode')) {
-        if (response.statusCode >= 400) {
-          console.debug(Date() +
-            ' requestretry response.statusCode=' + response.statusCode);
-          console.debug(Date() +
-            ' requestretry body=' + JSON.stringify(body));
-          return response.statusCode;
+    maxAttempts: 10,
+    retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
+    retryStrategy: function myRetryStrategy(err, response, body, options) {
+        if (response) {
+            if (response.hasOwnProperty('statusCode')) {
+                if (response.statusCode >= 400) {
+                    console.debug(
+                        `${new Date().toISOString()} requestretry response.statusCode=${response.statusCode}`
+                    );
+                    console.debug(
+                        `${new Date().toISOString()} requestretry body=${JSON.stringify(body)}`
+                    );
+                    return response.statusCode;
+                }
+            }
+        } else if (err) {
+            console.debug(`${new Date().toISOString()} requestretry err=${err}`);
+            return err;
         }
-      }
-    } else if (err) {
-      console.log('requestretry err=' + err);
-      return err;
-    }
-  },
+    },
 });
 
 
@@ -96,21 +99,21 @@ exports.logout = logout;
 Ensures user Presence for asyncronous stream connections (APN).
 */
 function engage(token, groupIds, verbosity) {
-  console.log(Date() + ' engage() groupIds=' + groupIds);
+    console.debug(`${new Date().toISOString()} engage groupIds=${groupIds}`);
 
-  // Legacy EventStream 'debug' verbosity
-  var _verbosity = verbosity === 'debug' ? 'active' : verbosity;
+    // Legacy EventStream 'debug' verbosity
+    var _verbosity = verbosity === 'debug' ? 'active' : verbosity;
 
-  var engageOptions = {
-    url: 'https://api.orionlabs.io/api/engage',
-    method: 'POST',
-    headers: {'Authorization': token},
-    json: {
-      seqnum: Date.now(),
-      groupIds: groupIds,
-      destinations: [{destination: 'EventStream', verbosity: _verbosity}],
-    },
-  };
+    var engageOptions = {
+        url: 'https://api.orionlabs.io/api/engage',
+        method: 'POST',
+        headers: {'Authorization': token},
+        json: {
+            seqnum: Date.now(),
+            groupIds: groupIds,
+            destinations: [{destination: 'EventStream', verbosity: _verbosity}],
+        },
+    };
 
   /*
   Start a Timer every time we Engage. If we don't receive a Ping within this
@@ -121,32 +124,40 @@ function engage(token, groupIds, verbosity) {
 
 /*
   var engageTimer = setTimeout(function() {
-    console.log(Date() + ' Engage Timeout.');
+    console.debug(Date() + ' Engage Timeout.');
     return engage(token, groupIds);
   }, 360000);
 */
-  function engageCallback(error, response, body) {
-    if (error) {
-      console.log(Date() + ' Unable to Engage. error=' + error);
-    } else if (response.statusCode === 409) {
-      console.log(Date() + ' Re-engaging.');
-      //clearTimeout(engageTimer);
-      return engage(token, groupIds);
-    } else if (!error && response.statusCode === 200) {
-      console.log(Date() + ' Engaged.');
-    } else {
-      console.log(Date() + ' Unable to Engage!');
-    }
-  }
+    function engageCallback(error, response, body) {
+        if (error) {
+            console.debug(
+                `${new Date().toISOString()} engage Unable to Engage. groupId=${groupIds} error=${error}`
+            );
+        } else if (response.statusCode === 409) {
+            console.debug(
+                `${new Date().toISOString()} engage Re-engaging. groupId=${groupIds}`
+            );
+            //clearTimeout(engageTimer);
+            return engage(token, groupIds);
+        } else if (!error && response.statusCode === 200) {
+            console.debug(
+                `${new Date().toISOString()} engage Engaged. groupId=${groupIds}`
+            );
+        } else {
+            console.debug(
+                `${new Date().toISOString()} engage Unable to Engage. groupId=${groupIds} error=${error}`
+            );
+        }
+      }
 
-  return request(engageOptions, engageCallback);
+    return request(engageOptions, engageCallback);
 }
 exports.engage = engage;
 
 
 // Respond to an Event Stream Engage Ping
 function pong(token, pingId) {
-  console.log(Date() + ' pong() pingId=' + pingId);
+  console.debug(`${new Date().toISOString()} pong pingId=${pingId}`);
   return new Promise(function(resolve, reject) {
     request({
       url: 'https://api.orionlabs.io/api/pong',
@@ -167,7 +178,7 @@ exports.pong = pong;
 // Orion TTS-as-a-Service. (TTSAAS?)
 function lyre(options) {
   var lyreUrl = process.env.LYRE_URL || LYRE_URL;
-  console.debug(Date() + ' lyreUrl=' + lyreUrl);
+  console.debug(`${new Date().toISOString()} lyre lyreUrl=${lyreUrl}`);
   var token;
   var user_id;
 
@@ -191,14 +202,20 @@ function lyre(options) {
                 },
                 function(error, response, body) {
                     if (error) {
-                        console.log(Date() + ' get user error=' + error);
-                        console.log(response);
+                        console.error(
+                            `${new Date().toISOString()} lyre get user error=${error}`
+                        );
+                        console.error(
+                            `${new Date().toISOString()} lyre get user response=${response}`
+                        );
                     } else {
                         var body_groups = JSON.parse(body).groups;
                         body_groups.forEach(function (group) {
                             options.groupIds.push(group.id);
                         });
-                        console.log(Date() + ' lyre() groupIds=' + options.groupIds);
+                        console.debug(
+                            `${new Date().toISOString()} lyre groupIds=${options.groupIds}`
+                        );
                         request({
                             url: lyreUrl,
                             method: 'POST',
@@ -212,14 +229,18 @@ function lyre(options) {
                           },
                           function(err, response, body) {
                               if (err) {
-                                  console.error(err);
+                                  console.error(
+                                      `${new Date().toISOString()} lyre err=${err}`
+                                  );
                               }
                         });
                     }
                 }
             );
         } else {
-            console.log(Date() + ' lyre() groupIds=' + options.groupIds);
+            console.debug(
+                `${new Date().toISOString()} lyre groupIds=${options.groupIds}`
+            );
             request({
                 url: lyreUrl,
                 method: 'POST',
@@ -233,7 +254,9 @@ function lyre(options) {
               },
               function(err, response, body) {
                 if (err) {
-                    console.error(err);
+                    console.error(
+                        `${new Date().toISOString()} lyre err=${err}`
+                    );
                 }
               });
         }
@@ -258,7 +281,9 @@ function lookupPromise(options, callback) {
         },
         function(error, response, body) {
           if (error) {
-            console.log(Date() + ' Lookup error=' + error);
+            console.debug(
+                `${new Date().toISOString()} lookupPromise error=${error}`
+            );
           } else {
             callback(body.msg);
           }
@@ -281,8 +306,8 @@ function lookup(auth, msg, callback) {
   },
   function(error, response, body) {
     if (error) {
-      console.log(Date() + ' Lookup error=' + error);
-      console.log(response);
+      console.error(`${new Date().toISOString()} lookup error=${error}`);
+      console.error(`${new Date().toISOString()} lookup response=${response}`);
     } else {
       callback(body.msg);
     }
@@ -294,9 +319,12 @@ exports.lookup = lookup;
 function locrisWAV2OV(msg, callback) {
   // Override wav2ov endpoint for local development:
   var locrisWAV2OVURL = process.env.LOCRIS_WAV2OV || LOCRIS_WAV2OV;
-  var xhr = new XMLHttpRequest();
 
-  console.debug(Date() + ' locrisWAV2OVURL=' + locrisWAV2OVURL);
+  console.debug(
+      `${new Date().toISOString()} locrisWAV2OV locrisWAV2OVURL=${locrisWAV2OVURL}`
+  );
+
+  var xhr = new XMLHttpRequest();
 
   xhr.open('POST', locrisWAV2OVURL, true);
 
@@ -316,9 +344,12 @@ exports.locrisWAV2OV = locrisWAV2OV;
 
 function locrisOV2WAV(msg, callback) {
   var locrisOV2WAVURL = process.env.LOCRIS_OV2WAV || LOCRIS_OV2WAV;
-  var xhr = new XMLHttpRequest();
 
-  console.debug(Date() + ' locrisOV2WAVURL=' + locrisOV2WAVURL);
+  console.debug(
+      `${new Date().toISOString()} locrisOV2WAV locrisOV2WAVURL=${locrisOV2WAVURL}`
+  );
+
+  var xhr = new XMLHttpRequest();
 
   xhr.open('POST', locrisOV2WAVURL, true);
 
@@ -342,9 +373,12 @@ exports.locrisOV2WAV = locrisOV2WAV;
 
 function locrisSTT(msg, callback) {
   var locrisSTTURL = process.env.LOCRIS_STT || LOCRIS_STT;
-  var xhr = new XMLHttpRequest();
 
-  console.debug(Date() + ' locrisSTTURL=' + locrisSTTURL);
+  console.debug(
+      `${new Date().toISOString()} locrisSTT locrisSTTURL=${locrisSTTURL}`
+  );
+
+  var xhr = new XMLHttpRequest();
 
   xhr.open('POST', locrisSTTURL, true);
 
