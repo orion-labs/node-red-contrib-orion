@@ -18,24 +18,26 @@ var WebSocket = require('ws');
 var orion = require('./orionlib.js');
 
 var request = require('requestretry').defaults({
-  maxAttempts: 10,
-  retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
-  retryStrategy: function myRetryStrategy(err, response, body, options) {
-    if (response) {
-      if (response.hasOwnProperty('statusCode')) {
-        if (response.statusCode >= 400) {
-          console.debug(Date() +
-            ' requestretry response.statusCode=' + response.statusCode);
-          console.debug(Date() +
-            ' requestretry body=' + JSON.stringify(body));
-          return response.statusCode;
+    maxAttempts: 10,
+    retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
+    retryStrategy: function myRetryStrategy(err, response, body, options) {
+        if (response) {
+            if (response.hasOwnProperty('statusCode')) {
+                if (response.statusCode >= 400) {
+                    console.debug(
+                        `${new Date().toISOString()} requestretry response.statusCode=${response.statusCode}`
+                    );
+                    console.debug(
+                        `${new Date().toISOString()} requestretry body=${JSON.stringify(body)}`
+                    );
+                    return response.statusCode;
+                }
+            }
+        } else if (err) {
+            console.log(`${new Date().toISOString()} requestretry err=${err}`);
+            return err;
         }
-      }
-    } else if (err) {
-      console.log('requestretry err=' + err);
-      return err;
-    }
-  },
+    },
 });
 
 
@@ -192,7 +194,7 @@ module.exports = function(RED) {
                     user_id = auth.id;
                     if (use_all_groups === true) {
                         var url = 'https://api.orionlabs.io/api/users/' + user_id;
-                        console.log(Date() + ' ' + node.id + ' use_all_groups=true');
+                        console.log(`${new Date().toISOString()} ${node.id} use_all_groups=true`);
                         request(
                             {
                                 url: url,
@@ -201,8 +203,12 @@ module.exports = function(RED) {
                             },
                             function(error, response, body) {
                                 if (error) {
-                                    console.log(Date() + ' get user error=' + error);
-                                    console.log(response);
+                                    console.log(
+                                        `${new Date().toISOString()} ${node.id} get user error=${error}`
+                                    );
+                                    console.log(
+                                        `${new Date().toISOString()} ${node.id} response=${response}`
+                                    );
                                 } else {
                                     var body_groups = JSON.parse(body).groups;
                                     body_groups.forEach(function (group) {
@@ -226,16 +232,23 @@ module.exports = function(RED) {
                     function startWS() {
                         ws = new WebSocket(ws_url, ws_opts);
                         ws.onopen = function(evt) {
-                            console.log(Date() + ' ' + node.id + ' ws.onopen');
+                            console.debug(
+                                `${new Date().toISOString()} ${node.id} ws.onopen`
+                            );
                             node.status(
                                 {fill: 'green', shape: 'dot', text: 'Connected'});
                         };
 
                         ws.onmessage = function(data, flags, number) {
-                            console.log(Date() + ' ' + node.id + ' ws.onmessage');
+                            console.debug(
+                                `${new Date().toISOString()} ${node.id} ws.onmessage`
+                            );
 
                             var event_data = JSON.parse(data.data);
-                            console.log(Date() + ' ' + node.id + ' event_data.event_type=' + event_data.event_type);
+
+                            console.debug(
+                                `${new Date().toISOString()} ${node.id} ws.onmessage event_data.event_type=${event_data.event_type} event_data.eventId=${event_data.eventId}`
+                            );
 
                             // Respond to Orion's in-band Ping/Pong (EventStream legacy)
                             if (event_data.event_type === 'ping') {
@@ -259,11 +272,18 @@ module.exports = function(RED) {
                         };
 
                         ws.onclose = function (evt) {
-                          console.log(Date() + ' ' + node.id + ' ws.onclose err=' + evt.code);
-                            ws = null;
-                            setTimeout(function() {
-                                startWS();
-                            }, 5000);
+                            console.log(
+                                `${new Date().toISOString()} ${node.id} ws.onclose err=${evt.code}`
+                            );
+                            if (evt.code !== 4158) {
+                                console.log(
+                                    `${new Date().toISOString()} ${node.id} Closing.`
+                                );
+                                ws = null;
+                                setTimeout(function() {
+                                    startWS();
+                                }, 5000);
+                            }
                         }
                     }
 
@@ -285,11 +305,7 @@ module.exports = function(RED) {
                         {fill: 'red', shape: 'dot', text: JSON.stringify(error)});
 
                     node.error(
-                        'username=' +
-                        node.username +
-                        ' encountered a connection error (' +
-                        error.code +
-                        '). Reconnecting...'
+                        `${node.id} encountered a connection error (${error.code}). Reconnecting...`
                     );
                 } else {
                     node.status({
@@ -297,9 +313,7 @@ module.exports = function(RED) {
                     });
                     // node.error('error=' + error);
                     node.error(
-                        'username=' +
-                        node.username +
-                        ' encountered a connection error. Reconnecting...'
+                        `${node.id} encountered a connection error (${error.code}). Reconnecting...`
                     );
                 }
 
@@ -309,7 +323,14 @@ module.exports = function(RED) {
             });
 
     node.on('close', function() {
-      node.debug('Closing');
+      node.debug(`${node.id} Closing OrionRX.`);
+      try {
+          ws.close(4158);
+      } catch(err) {
+          console.log(
+              `${new Date().toISOString()} ${node.id} Caught err=${err}`
+          );
+      }
       node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
     });
   }
