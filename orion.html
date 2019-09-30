@@ -20,7 +20,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   </div>
 
   <div class="form-row">
-    <label for="node-config-input-groupIds"><i class="icon-bookmark"></i> Groups [sep:',']</label>
+    <label for="node-config-input-groupIds"><i class="icon-bookmark"></i> Groups (One or more, separate with comma ','.)</label>
   </div>
 
   <div class="form-row node-text-editor-row">
@@ -35,7 +35,9 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-help-name="orion_config">
     <p>Authentication for the Orion API</p>
-    <p>Requires a username, password.</p>
+    <p>Requires a Username & Password.</p>
+    <p>Groups can be a comma-seperated list of Group IDs to connect to.
+    If not specified, can be passed to TX node as <em>msg.groups</em>.
 
     <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
@@ -134,19 +136,23 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-help-name="orion_rx">
   <p>
-    Orion Input (Receive) Node. Will receive Events from the Orion Event Stream:
+    Orion Input (Receive) Node. Receives Events from the Orion Event Stream:
     <ul>
-      <li>Push-To-Talk (PTT)</li>
-      <li>User Status</li>
+      <li>Push-To-Talk (PTT) [direct & group]</li>
+      <li>User Status [including location]</li>
+      <li>User Presence [online, offline, muted]</li>
+      <li>User Telemetry [sensors, other data]</li>
     </ul>
-    Events are split into 3 possible outputs:
+    Events are automatically filtered and split into four outputs:
     <ul>
-      <li>Output 0 - All Events (ptt, userstatus, et al.)</li>
-      <li>Output 1 - Push-to-Talk Events Only (ptt)</li>
-      <li>Output 2 - User Status Events Only (userstatus)</li>
-      <li>Output 3 - Direct (One-to-One) Push-to-Talk Events Only (ptt)</li>
+      <li><b>Output 0</b> - All Events (ptt, userstatus, etc.)</li>
+      <li><b>Output 1</b> - Push-to-Talk Events Only (ptt)</li>
+      <li><b>Output 2</b> - User Status Events Only (userstatus)</li>
+      <li><b>Output 3</b> - Direct (One-to-One) Push-to-Talk Events Only (ptt)</li>
     </ul>
   </p>
+
+  <p>Checking the <b>Ignore Self</b> Setting will ignore Events from yourself.</p>
 
   <h3>Outputs</h3>
 
@@ -198,14 +204,11 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <dd>User's state in each Group.</dd>
 
   </dl>
-  <p></p>
-    Check the <b>Ignore Self</b> Setting to ignore User Status and PTT events
-    from yourself.
-  <p></p>
+
 
   <h3>Details</h3>
     <p>Orion Push-To-Talk uses a custom audio encoding. Use the <b>Orion Decode</b>
-    as an in-line transform to conver Orion Audio Encoding to WAV.</p>
+    as an in-line transform to convert Orion Audio Encoding to WAV.</p>
 
     <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
@@ -356,8 +359,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-help-name="orion_decode">
   <p>Orion Decode Node. Decodes Orion Audio Format to WAV/PCM.</p>
-  <p><code>msg.payload</code> can either contain a URL to the decoded file, <i>or</i>
-    a Buffer of the decoded audio.</p>
+  <p>The setting <b>Return Type</b> determines if the output <code>msg.payload</code> contains a URL to the decoded
+   file, or a Buffer of the decoded audio.</p>
 
   <h3>Inputs</h3>
 
@@ -603,3 +606,160 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 </script>
 
 <!-- END orion_transcribe -->
+
+
+<!-- START orion_translate -->
+
+<script type="text/x-red" data-template-name="orion_translate">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-inputlanguageCode" style="margin-left:15px; width: 110px; color:#848484"> Input Language</label>
+        <input type="hidden" id="node-input-inputlanguageCodeType">
+        <select type="text" id="node-input-inputlanguageCode">
+            <option value="ar-EG">Arabic (Egypt)</option>
+            <option value="ar-XA">Arabic</option>
+            <option value="ca-ES">Catalan (Spain)</option>
+            <option value="cs-CZ">Czech (Czech Republic)</option>
+            <option value="da-DK">Danish (Denmark)</option>
+            <option value="de-DE">German (Germany)</option>
+            <option value="el-GR">Greek (Greece)</option>
+            <option value="en-AU">English (Australia)</option>
+            <option value="en-CA">English (Canada)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="en-IN">English (India)</option>
+            <option value="en-NZ">English (New Zealand)</option>
+            <option value="en-US">English (US)</option>
+            <option value="es-ES">Spanish (Spain)</option>
+            <option value="es-MX">Spanish - MX</option>
+            <option value="fi-FI">Finnish (Finland)</option>
+            <option value="fil-PH">Filipino (Philippines)</option>
+            <option value="fr-CA">French (Canada)</option>
+            <option value="fr-FR">French (France)</option>
+            <option value="hi-IN">Hindi (India)</option>
+            <option value="hu-HU">Hungarian (Hungary)</option>
+            <option value="id-ID">Indonesian (Indonesia)</option>
+            <option value="it-IT">Italian (Italy)</option>
+            <option value="ja-JP">Japanese (Japan)</option>
+            <option value="ko-KR">Korean (South Korea)</option>
+            <option value="nb-NO">Norwegian (Norway)</option>
+            <option value="nl-NL">Dutch (Netherlands)</option>
+            <option value="pl-PL">Polish (Poland)</option>
+            <option value="pt-BR">Portuguese (Brazil)</option>
+            <option value="pt-PT">Portuguese (Portugal)</option>
+            <option value="ru-RU">Russian (Russia)</option>
+            <option value="sv-SE">Swedish (Sweden)</option>
+            <option value="tr-TR">Turkish (Turkey)</option>
+            <option value="uk-UA">Ukrainian (Ukraine)</option>
+            <option value="vi-VN">Vietnamese (Vietnam)</option>
+            <option value="zh-CN">Chinese</option>
+            <option value="zh-HK">Chinese (Hong Kong)</option>
+            <option value="cmn-CN">Chinese (Mandarin)</option>
+            <option value="zh-TW">Chinese (Taiwan)</option>
+        </select>
+    </div>
+
+     <div class="form-row">
+        <label for="node-input-outputlanguageCode" style="margin-left:15px; width: 110px; color:#848484"> Output Language</label>
+        <input type="hidden" id="node-input-outputlanguageCodeType">
+        <select type="text" id="node-input-outputlanguageCode">
+            <option value="ar-EG">Arabic (Egypt)</option>
+            <option value="ar-XA">Arabic</option>
+            <option value="ca-ES">Catalan (Spain)</option>
+            <option value="cs-CZ">Czech (Czech Republic)</option>
+            <option value="da-DK">Danish (Denmark)</option>
+            <option value="de-DE">German (Germany)</option>
+            <option value="el-GR">Greek (Greece)</option>
+            <option value="en-AU">English (Australia)</option>
+            <option value="en-CA">English (Canada)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="en-IN">English (India)</option>
+            <option value="en-NZ">English (New Zealand)</option>
+            <option value="en-US">English (US)</option>
+            <option value="es-ES">Spanish (Spain)</option>
+            <option value="es-MX">Spanish - MX</option>
+            <option value="fi-FI">Finnish (Finland)</option>
+            <option value="fil-PH">Filipino (Philippines)</option>
+            <option value="fr-CA">French (Canada)</option>
+            <option value="fr-FR">French (France)</option>
+            <option value="hi-IN">Hindi (India)</option>
+            <option value="hu-HU">Hungarian (Hungary)</option>
+            <option value="id-ID">Indonesian (Indonesia)</option>
+            <option value="it-IT">Italian (Italy)</option>
+            <option value="ja-JP">Japanese (Japan)</option>
+            <option value="ko-KR">Korean (South Korea)</option>
+            <option value="nb-NO">Norwegian (Norway)</option>
+            <option value="nl-NL">Dutch (Netherlands)</option>
+            <option value="pl-PL">Polish (Poland)</option>
+            <option value="pt-BR">Portuguese (Brazil)</option>
+            <option value="pt-PT">Portuguese (Portugal)</option>
+            <option value="ru-RU">Russian (Russia)</option>
+            <option value="sv-SE">Swedish (Sweden)</option>
+            <option value="tr-TR">Turkish (Turkey)</option>
+            <option value="uk-UA">Ukrainian (Ukraine)</option>
+            <option value="vi-VN">Vietnamese (Vietnam)</option>
+            <option value="zh-CN">Chinese</option>
+            <option value="zh-HK">Chinese (Hong Kong)</option>
+            <option value="cmn-CN">Chinese (Mandarin)</option>
+            <option value="zh-TW">Chinese (Taiwan)</option>
+        </select>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="orion_translate">
+  <p>Orion Translate Node. Translates Orion Audio to from one language to another.</p>
+
+  <h3>Inputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to Orion audio to translate.</dd>
+
+  </dl>
+
+  <h3>Outputs</h3>
+
+  <dl class="message-properties">
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>Audio translated to another language.</dd>
+
+  </dl>
+
+  <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('orion_translate', {
+        category: 'Orion',
+        color: '#0099ff',
+        defaults: {
+            name: { value: '' },
+            inputlanguageCode:       { value: undefined },
+            inputlanguageCodeType:   { value: 'str' },
+            outputlanguageCode:       { value: undefined },
+            outputlanguageCodeType:   { value: 'str' }
+        },
+        inputs:1,
+        outputs:1,
+        icon: 'orion_trapezium.png',
+        label: function () {
+            if (this.name) {
+                return this.name;
+            } else if (this.inputlanguageCode && this.outputlanguageCode) {
+                return this.inputlanguageCode + ' -> ' + this.outputlanguageCode;
+            } else {
+                return 'Orion Translate';
+            }
+        },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+    });
+</script>
+
+<!-- END orion_translate -->

@@ -396,6 +396,33 @@ module.exports = function(RED) {
   RED.nodes.registerType('orion_transcribe', OrionTranscribe);
 
   /*
+  OrionTranslate
+    Node for Translating Orion audio from one language to another.
+  */
+  function OrionTranslate(config) {
+    RED.nodes.createNode(this, config);
+    var node = this;
+    node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+
+    function translateCallback(response) {
+      node.send(response);
+    }
+
+    node.on('input', function(msg) {
+      if (msg.hasOwnProperty('media')) {
+        node.status({fill: 'green', shape: 'dot', text: 'Encoding'});
+        msg.input_lang = config.inputlanguageCode;
+        msg.output_lang = config.outputlanguageCode;
+        orion.locrisTranslate(msg, translateCallback);
+        node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+      } else {
+        node.send(msg);
+      }
+    });
+  }
+  RED.nodes.registerType('orion_translate', OrionTranslate);
+
+  /*
   OrionDecode
     Node for Decoding Orion audio format media.
   */

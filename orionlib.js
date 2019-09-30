@@ -47,6 +47,7 @@ var OCHRE_URL = 'https://ochre.api.orionaster.com/ochre';
 var LOCRIS_OV2WAV = 'https://locris.api.orionaster.com/ov2wav';
 var LOCRIS_WAV2OV = 'https://locris.api.orionaster.com/wav2ov';
 var LOCRIS_STT = 'https://locris.api.orionaster.com/stt';
+var LOCRIS_TRANSLATE = 'https://locris.api.orionaster.com/translate';
 
 
 // Login to Orion and retrieve a Auth Token, then call callback:
@@ -398,3 +399,32 @@ function locrisSTT(msg, callback) {
   xhr.send(JSON.stringify(msg));
 }
 exports.locrisSTT = locrisSTT;
+
+
+function locrisTranslate(msg, callback) {
+  var locrisTranslateURL = process.env.LOCRIS_TRANSLATE || LOCRIS_TRANSLATE;
+
+  console.debug(
+      `${new Date().toISOString()} locrisTranslate locrisTranslateURL=${locrisTranslateURL}`
+  );
+
+  var xhr = new XMLHttpRequest();
+
+  xhr.open('POST', locrisTranslateURL, true);
+
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+      var response = JSON.parse(xhr.responseText);
+
+      if (msg.return_type === 'buffer') {
+        response.payload = Buffer.from(response.payload);
+      }
+      callback(response);
+    }
+  };
+
+  xhr.send(JSON.stringify(msg));
+}
+exports.locrisTranslate = locrisTranslate;
