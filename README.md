@@ -18,11 +18,11 @@ node-red-contrib-orion
 
 <a href="https://www.nodered.org" target="_new">Node-RED</a> nodes to talk to <a href="https://www.orionlabs.io" target="_new">Orion</a>.
 
-Orion is an Advanced Voice Platform for instant team communications across any
+Orion is an Advanced Communication Platform for instant team communications across any
 device, on any network, without boundaries. The primary Orion Application is
 Push-To-Talk, where users can speak-to and be heard-by groups using the Orion
 Smartphone Applications for iOS and Android, and using specialized devices
-such as the <a href="https://www.orionlabs.io/orion-onyx/" target="_new">Orion Onyx</a>, <a href="https://www.orionlabs.io/orion-sync/" target="_new">Orion Sync</a>.
+such as the <a href="https://www.orionlabs.io/orion-onyx/" target="_new">Orion Onyx</a>.
 
 In addition to speaking to people, users can speak to 'things'. Using Orion's
 Voice Superpowers users can build Bots that respond to voice commands, user
@@ -143,7 +143,7 @@ For help with this or other Orion products, please see [Orion Labs Support](http
 
 # Copyright & License
 
-Copyright 2019 Orion Labs, Inc.
+Copyright 2020 Orion Labs, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
