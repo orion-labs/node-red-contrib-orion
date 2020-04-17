@@ -1,0 +1,22 @@
+{
+    "opts": {
+        "destination": "./docs",
+        "recurse": true
+    },
+    "tags": {
+        "allowUnknownTags": true,
+        "dictionaries": ["jsdoc","closure"]
+    },
+    "source": {
+              "include": ["."],
+        "includePattern": ".+\\.js(doc|x)?$",
+        "excludePattern": "(^|\\/|\\\\)_"
+    },
+    "plugins": ["plugins/markdown"],
+      "recurseDepth": 1,
+      "sourceType": "module",
+  "templates": {
+        "cleverLinks": false,
+        "monospaceLinks": false
+    }
+}

@@ -46,6 +46,6 @@
     },
     "scripts": {
         "start": "node-red",
-        "test": "nyc mocha --timeout 20000 'test/**/*_spec.js'"
+        "test": "nyc mocha --timeout 20000 'test/**test.js'"
     }
 }
