@@ -17,7 +17,7 @@
         "tmp": "latest",
         "ws": "latest",
         "xmlhttprequest": "latest",
-        "@orionlabs/node-red": "latest"
+        "@orionlabs/node-orion": "latest"
     },
     "repository": {
         "type": "git",
