@@ -52,7 +52,7 @@ module.exports = function (RED) {
         // Handle "userstatus" Event...
         OrionClient.auth(node.username, node.password).then((resolve) => {
           const token = resolve.token;
-          OrionClient.updateUserStatus(token, msg.userstatus)
+          OrionClient.updateUserStatus(token, msg)
             .then((resolve, reject) => {
               if (resolve) {
                 node.status({
@@ -114,8 +114,8 @@ module.exports = function (RED) {
       node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
 
       Promise.resolve().then(() => {
-        if (msg.message === 'unit_test') {
-          this.warn('unit_test');
+        if (msg.unitTest) {
+          this.warn(msg.unitTest);
         }
       });
     });

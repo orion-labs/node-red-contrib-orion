@@ -170,15 +170,15 @@ describe('OrionTXNode', () => {
     helper.unload();
     helper.stopServer(done);
   });
-
+  /*
   it('Auth Credentials should be set', (done) => {
     should.exist(username);
     should.exist(password);
     should.exist(groups);
     done();
   });
-
-  it('Should load & send events', (done) => {
+*/
+  it('Should send unit_test message as a PTT event', (done) => {
     const testTXNode = {
       id: 'tn1',
       type: 'orion_tx',
@@ -200,11 +200,50 @@ describe('OrionTXNode', () => {
       let tc1 = helper.getNode('tc1');
       tn1.should.have.property('name', 'orion_tx');
       tc1.should.have.property('name', 'orion_config');
-      tn1.receive({ message: 'unit_test' });
+      tn1.receive({ message: 'unitTest', unitTest: 'ptt' });
 
       tn1.on('call:warn', (call) => {
-        call.should.be.calledWithExactly('unit_test');
+        call.should.be.calledWithExactly('ptt');
         done();
+      });
+    });
+  });
+
+  it('Should set userstatus', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    OrionClient.auth(username, password).then((resolve) => {
+      const userId = resolve.id;
+      helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+        let tn1 = helper.getNode('testTXNode');
+        let tc1 = helper.getNode('testConfig');
+        tn1.should.have.property('name', 'orion_tx_node');
+        tc1.should.have.property('name', 'orion_config_node');
+
+        tn1.receive({
+          unitTest: 'userstatus',
+          event_type: 'userstatus',
+          id: userId,
+          location: { lat: 1.2, lng: 3.4 },
+        });
+
+        tn1.on('call:warn', (call) => {
+          call.should.be.calledWithExactly('userstatus');
+          done();
+        });
       });
     });
   });
