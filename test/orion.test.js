@@ -4,11 +4,12 @@ const fs = require('fs');
 const helper = require('node-red-node-test-helper');
 const should = require('should');
 
+const OrionClient = require('@orionlabs/node-orion');
 const OrionNode = require('../orion.js');
 
 helper.init(require.resolve('node-red'));
 
-describe('Orion Config Node', () => {
+describe('OrionConfig', () => {
   beforeEach((done) => helper.startServer(done));
 
   afterEach((done) => {
@@ -29,7 +30,7 @@ describe('Orion Config Node', () => {
   });
 });
 
-describe('Orion Encode Node', () => {
+describe('OrionEncode', () => {
   beforeEach((done) => helper.startServer(done));
 
   afterEach((done) => {
@@ -89,7 +90,7 @@ describe('Orion Encode Node', () => {
   });
 });
 
-describe('Orion Transcribe Node', () => {
+describe('OrionTranscribe', () => {
   beforeEach((done) => helper.startServer(done));
 
   afterEach((done) => {
@@ -158,7 +159,7 @@ describe('Orion Transcribe Node', () => {
   });
 });
 
-describe('Orion TX Node', () => {
+describe('OrionTXNode', () => {
   const username = process.env.TEST_ORION_USERNAME;
   const password = process.env.TEST_ORION_PASSWORD;
   const groups = process.env.TEST_ORION_GROUPS;
@@ -209,7 +210,7 @@ describe('Orion TX Node', () => {
   });
 });
 
-describe('Orion RX Node', () => {
+describe('OrionRXNode', () => {
   const username = process.env.TEST_ORION_USERNAME;
   const password = process.env.TEST_ORION_PASSWORD;
   const groups = process.env.TEST_ORION_GROUPS;
@@ -266,6 +267,248 @@ describe('Orion RX Node', () => {
 
       hn1.on('input', (msg) => {
         msg.should.have.property('event_type', 'ptt');
+        done();
+      });
+    });
+  });
+});
+
+describe('OrionLookup', () => {
+  const username = process.env.TEST_ORION_USERNAME;
+  const password = process.env.TEST_ORION_PASSWORD;
+  const groups = process.env.TEST_ORION_GROUPS;
+
+  beforeEach((done) => helper.startServer(done));
+
+  afterEach((done) => {
+    helper.unload();
+    helper.stopServer(done);
+  });
+
+  it('Auth Credentials should be set', (done) => {
+    should.exist(username);
+    should.exist(password);
+    should.exist(groups);
+    done();
+  });
+
+  it('Should return whoami profile for a User', (done) => {
+    const lookupNode = {
+      id: 'lookupNode',
+      type: 'orion_lookup',
+      name: 'orion_lookup_node',
+      orion_config: 'configNode',
+      wires: [['helperNode'], [], [], []],
+    };
+    const configNode = {
+      id: 'configNode',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [lookupNode, configNode, helperNode];
+
+    helper.load(OrionNode, testFlow, { configNode: testCreds }, () => {
+      const testLookupNode = helper.getNode('lookupNode');
+      const testConfigNode = helper.getNode('configNode');
+      const testHelperNode = helper.getNode('helperNode');
+
+      testLookupNode.should.have.property('name', 'orion_lookup_node');
+      testConfigNode.should.have.property('name', 'orion_config_node');
+
+      testLookupNode.receive({ payload: 'whoami' });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('userstatus_info');
+        msg.should.have.property('user_info');
+
+        const usUserId = msg.userstatus_info.id;
+        const uiUserId = msg.user_info.id;
+
+        msg.userstatus_info.should.have.property('id', uiUserId);
+        msg.user_info.should.have.property('id', usUserId);
+
+        done();
+      });
+    });
+  });
+
+  it('Should get User Status for a userstatus event_type', (done) => {
+    const lookupNode = {
+      id: 'lookupNode',
+      type: 'orion_lookup',
+      name: 'orion_lookup_node',
+      orion_config: 'configNode',
+      wires: [['helperNode'], [], [], []],
+    };
+    const configNode = {
+      id: 'configNode',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [lookupNode, configNode, helperNode];
+
+    OrionClient.auth(username, password).then((resolve) => {
+      const userId = resolve.id;
+      helper.load(OrionNode, testFlow, { configNode: testCreds }, () => {
+        const testLookupNode = helper.getNode('lookupNode');
+        const testConfigNode = helper.getNode('configNode');
+        const testHelperNode = helper.getNode('helperNode');
+
+        testLookupNode.should.have.property('name', 'orion_lookup_node');
+        testConfigNode.should.have.property('name', 'orion_config_node');
+
+        testLookupNode.receive({ event_type: 'userstatus', id: userId });
+
+        testHelperNode.on('input', (msg) => {
+          msg.should.have.property('userstatus_info');
+          msg.should.have.property('user_info');
+
+          const usUserId = msg.userstatus_info.id;
+          const uiUserId = msg.user_info.id;
+
+          msg.userstatus_info.should.have.property('id', uiUserId);
+          msg.user_info.should.have.property('id', usUserId);
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should get User & Group Profile for a ptt event_type', (done) => {
+    const lookupNode = {
+      id: 'lookupNode',
+      type: 'orion_lookup',
+      name: 'orion_lookup_node',
+      orion_config: 'configNode',
+      wires: [['helperNode'], [], [], []],
+    };
+    const configNode = {
+      id: 'configNode',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [lookupNode, configNode, helperNode];
+
+    OrionClient.auth(username, password).then((resolve) => {
+      const userId = resolve.id;
+      helper.load(OrionNode, testFlow, { configNode: testCreds }, () => {
+        const testLookupNode = helper.getNode('lookupNode');
+        const testConfigNode = helper.getNode('configNode');
+        const testHelperNode = helper.getNode('helperNode');
+
+        testLookupNode.should.have.property('name', 'orion_lookup_node');
+        testConfigNode.should.have.property('name', 'orion_config_node');
+
+        testLookupNode.receive({ event_type: 'ptt', id: groups, sender: userId });
+
+        testHelperNode.on('input', (msg) => {
+          msg.should.have.property('userstatus_info');
+          msg.should.have.property('user_info');
+          msg.should.have.property('group_info');
+
+          const usUserId = msg.userstatus_info.id;
+          const uiUserId = msg.user_info.id;
+
+          msg.userstatus_info.should.have.property('id', uiUserId);
+          msg.user_info.should.have.property('id', usUserId);
+          msg.group_info.should.have.property('id', groups);
+
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should get User Profile for a msg.user', (done) => {
+    const lookupNode = {
+      id: 'lookupNode',
+      type: 'orion_lookup',
+      name: 'orion_lookup_node',
+      orion_config: 'configNode',
+      wires: [['helperNode'], [], [], []],
+    };
+    const configNode = {
+      id: 'configNode',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [lookupNode, configNode, helperNode];
+
+    OrionClient.auth(username, password).then((resolve) => {
+      const userId = resolve.id;
+      helper.load(OrionNode, testFlow, { configNode: testCreds }, () => {
+        const testLookupNode = helper.getNode('lookupNode');
+        const testConfigNode = helper.getNode('configNode');
+        const testHelperNode = helper.getNode('helperNode');
+
+        testLookupNode.should.have.property('name', 'orion_lookup_node');
+        testConfigNode.should.have.property('name', 'orion_config_node');
+
+        testLookupNode.receive({ user: userId });
+
+        testHelperNode.on('input', (msg) => {
+          msg.should.have.property('userstatus_info');
+          msg.should.have.property('user_info');
+
+          const usUserId = msg.userstatus_info.id;
+          const uiUserId = msg.user_info.id;
+
+          msg.userstatus_info.should.have.property('id', uiUserId);
+          msg.user_info.should.have.property('id', usUserId);
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should get Group Profile for a msg.group', (done) => {
+    const lookupNode = {
+      id: 'lookupNode',
+      type: 'orion_lookup',
+      name: 'orion_lookup_node',
+      orion_config: 'configNode',
+      wires: [['helperNode'], [], [], []],
+    };
+    const configNode = {
+      id: 'configNode',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [lookupNode, configNode, helperNode];
+
+    helper.load(OrionNode, testFlow, { configNode: testCreds }, () => {
+      const testLookupNode = helper.getNode('lookupNode');
+      const testConfigNode = helper.getNode('configNode');
+      const testHelperNode = helper.getNode('helperNode');
+
+      testLookupNode.should.have.property('name', 'orion_lookup_node');
+      testConfigNode.should.have.property('name', 'orion_config_node');
+
+      testLookupNode.receive({ group: groups });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('group_info');
+        msg.group_info.should.have.property('id', groups);
         done();
       });
     });

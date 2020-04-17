@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/*
-Orion Node-RED Nodes.
-
-Author:: Greg Albrecht <gba@orionlabs.io>
-Copyright:: Copyright 2020 Orion Labs, Inc.
-License:: Apache License, Version 2.0
-Source:: https://github.com/orion-labs/node-red-contrib-orion
-*/
+/**
+ * Orion Node-RED Nodes.
+ *
+ * Author:: Greg Albrecht <gba@orionlabs.io>
+ * Copyright:: Copyright 2020 Orion Labs, Inc.
+ * License:: Apache License, Version 2.0
+ * Source:: https://github.com/orion-labs/node-red-contrib-orion
+ */
 
 'use strict';
 
@@ -55,7 +55,11 @@ module.exports = function (RED) {
           OrionClient.updateUserStatus(token, msg.userstatus)
             .then((resolve, reject) => {
               if (resolve) {
-                node.status({ fill: 'green', shape: 'dot', text: 'Updated userstatus' });
+                node.status({
+                  fill: 'green',
+                  shape: 'dot',
+                  text: 'Updated userstatus',
+                });
                 console.log(`${new Date().toISOString()} resolve=${resolve}`);
               } else if (reject) {
                 console.error(`${new Date().toISOString()} reject=${reject}`);
@@ -68,21 +72,6 @@ module.exports = function (RED) {
         node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
       } else {
         // Handle "PTT" Event...
-        let useAllGroups;
-        let groupIds = [];
-
-        // Enter as a String, exit as an Array.
-        if (msg.groupIds && typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
-          useAllGroups = true;
-        } else if (msg.groupIds && typeof msg.groupIds === 'string') {
-          useAllGroups = false;
-          groupIds = msg.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
-        } else if (typeof node.groupIds === 'string' && node.groupIds === 'ALL') {
-          useAllGroups = true;
-        } else if (typeof node.groupIds === 'string') {
-          groupIds = node.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
-        }
-
         node.status({ fill: 'green', shape: 'dot', text: 'Transmitting' });
 
         OrionClient.auth(node.username, node.password).then((resolve) => {
@@ -91,20 +80,39 @@ module.exports = function (RED) {
 
           const target = msg.target_self ? userId : msg.target;
 
-          if (useAllGroups) {
-            OrionClient.getAllUserGroups(token).then((result) => {
-              /* FIXME This probably won't populate groupIds because
-                      it's not async.
-                   */
-              result.groups.forEach((group) => groupIds.push(group.id));
-              OrionClient.utils.lyre(token, groupIds, msg.message, msg.media, target);
+          const resolveGroups = (token) => {
+            return new Promise((resolve) => {
+              if (msg.groupids && typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
+                OrionClient.getAllUserGroups(token).then((resolve) => {
+                  const _groups = [];
+                  resolve.forEach((group) => _groups.push(group.id));
+                  return _groups;
+                });
+              } else if (msg.groupIds && typeof msg.groupIds === 'string') {
+                resolve(msg.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
+              } else if (typeof node.groupIds === 'string' && node.groupids === 'ALL') {
+                OrionClient.getAllUserGroups(token).then((resolve) => {
+                  const _groups = [];
+                  resolve.forEach((group) => _groups.push(group.id));
+                  return _groups;
+                });
+              } else if (typeof node.groupIds === 'string') {
+                resolve(node.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
+              }
             });
-          } else {
-            OrionClient.utils.lyre(token, groupIds, msg.message, msg.media, target);
-          }
+          };
+
+          resolveGroups(token).then((resolve) => {
+            let groups = resolve;
+            OrionClient.utils
+              .lyre(token, groups, msg.message, msg.media, target)
+              .then((resolve) => node.send(resolve));
+          });
         });
-        node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
       }
+
+      node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
+
       Promise.resolve().then(() => {
         if (msg.message === 'unit_test') {
           this.warn('unit_test');
@@ -154,6 +162,7 @@ module.exports = function (RED) {
     OrionClient.auth(node.username, node.password).then((resolve) => {
       const token = resolve.token;
       const userId = resolve.id;
+
       resolveGroups(token).then((resolve) => {
         const groups = resolve;
         OrionClient.engage(token, groups).then(() => {
@@ -422,7 +431,10 @@ module.exports = function (RED) {
           const userId = msg.user;
           OrionClient.getUser(token, userId).then((resolve) => {
             msg.user_info = resolve;
-            node.send(msg);
+            OrionClient.getUserStatus(token, userId).then((resolve) => {
+              msg.userstatus_info = resolve;
+              node.send(msg);
+            });
           });
         }
         node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });

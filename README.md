@@ -11,7 +11,7 @@
   width="128"
   height="128"
 /></a>
-
+[![Build Status](https://travis-ci.org/orion-labs/node-red-contrib-orion.svg?branch=master)](https://travis-ci.org/orion-labs/node-red-contrib-orion)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/orion-labs/node-red-contrib-orion/graphs/commit-activity)
 [![HitCount](http://hits.dwyl.io/orion-labs/node-red-contrib-orion.svg)](http://hits.dwyl.io/orion-labs/node-red-contrib-orion)
 [![Dependencies Status](https://img.shields.io/david/orion-labs/node-red-contrib-orion.svg)](https://david-dm.org/orion-labs/node-red-contrib-orion)
