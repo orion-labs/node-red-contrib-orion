@@ -10,8 +10,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 // 'use strict';
 
-// const OrionClient = require('@orionlabs/node-orion');
-const OrionClient = require('./../node-orion/src/main');
+const OrionClient = require('@orionlabs/node-orion');
 
 module.exports = function(RED) {
   /**

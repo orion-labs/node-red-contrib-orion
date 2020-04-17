@@ -12,11 +12,6 @@
     "homepage": "https://github.com/orion-labs/node-red-contrib-orion",
     "dependencies": {
         "jsdoc": "^3.6.4",
-        "request": "latest",
-        "requestretry": "latest",
-        "tmp": "latest",
-        "ws": "latest",
-        "xmlhttprequest": "latest",
         "@orionlabs/node-orion": "latest"
     },
     "repository": {
