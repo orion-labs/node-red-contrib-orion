@@ -8,43 +8,19 @@ License:: Apache License, Version 2.0
 Source:: https://github.com/orion-labs/node-red-contrib-orion
 */
 
-/* jslint node: true */
-/* jslint white: true */
+// 'use strict';
 
-'use strict';
-
-var WebSocket = require('ws');
-
-var orion = require('./orionlib.js');
-
-var request = require('requestretry').defaults({
-    maxAttempts: 10,
-    retryDelay: (Math.floor(Math.random() * (120000 - 10000))),
-    retryStrategy: function myRetryStrategy(err, response, body, options) {
-        if (response) {
-            if (response.hasOwnProperty('statusCode')) {
-                if (response.statusCode >= 400) {
-                    console.debug(
-                        `${new Date().toISOString()} requestretry response.statusCode=${response.statusCode}`
-                    );
-                    console.debug(
-                        `${new Date().toISOString()} requestretry body=${JSON.stringify(body)}`
-                    );
-                    return response.statusCode;
-                }
-            }
-        } else if (err) {
-            console.log(`${new Date().toISOString()} requestretry err=${err}`);
-            return err;
-        }
-    },
-});
-
+// const OrionClient = require('@orionlabs/node-orion');
+const OrionClient = require('./../node-orion/src/main');
 
 module.exports = function(RED) {
-  /*
-  OrionConfig
-    Meta-Node for containing other Node-level configurations.
+  /**
+   * Meta-Node for containing other Node-level configurations.
+   * This node would not appear in a Pallet or within a Flow, and instead
+   * is used by the OrionRXNode, OrionTXNode & OrionLookupNode to provide
+   * credentials to the Orion service.
+   * @param config {Object} Orion Configuration
+   * @constructor
   */
   function OrionConfig(config) {
     RED.nodes.createNode(this, config);
@@ -52,21 +28,17 @@ module.exports = function(RED) {
     this.password = config.password;
     this.groupIds = config.groupIds;
   }
+  RED.nodes.registerType('orion_config', OrionConfig,
+      {credentials: {username: {type: 'text'}, password: {type: 'text'}}});
 
-  RED.nodes.registerType('orion_config', OrionConfig, {
-    credentials: {
-      username: {type: 'text'},
-      password: {type: 'text'},
-    },
-  });
-
-  /*
-  OrionTXNode
-    Node for Transmitting (TX) events to Orion.
+  /**
+   * Node for Transmitting (TX) events to Orion.
+   * @constructor
+   * @param {config} config - FIXME
   */
   function OrionTXNode(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
+    const node = this;
 
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
@@ -75,292 +47,241 @@ module.exports = function(RED) {
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
-    node.on('input', function(msg) {
-      var use_all_groups;
-      var groupIds = [];
+    node.on('input', (msg) => {
+      if (msg.hasOwnProperty('event_type') &&
+          msg.event_type === 'userstatus') {
+        // Handle "userstatus" Event...
+        OrionClient.updateUserStatus(node.username, node.password,
+            msg.userstatus)
+            .then((resolve, reject) => {
+              if (resolve) {
+                node.status(
+                    {fill: 'green', shape: 'dot', text: 'Updated userstatus'});
+                console.log(
+                    `${new Date().toISOString()} resolve=${resolve}`);
+              } else if (reject) {
+                console.error(
+                    `${new Date().toISOString()} reject=${reject}`);
+              }
+            })
+            .catch((error) => {
+              console.log(
+                  `${new Date().toISOString()} error=${error}`);
+            });
+        node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+      } else {
+        // Handle "PTT" Event...
+        let useAllGroups;
+        let groupIds = [];
+        const target = msg.target_self ? userId : msg.target;
 
-      // Enter as a String, exit as an Array.
-      if (msg.hasOwnProperty('groupIds') && typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
-          use_all_groups = true;
-      } else if (msg.hasOwnProperty('groupIds') && typeof msg.groupIds === 'string') {
-          use_all_groups = false;
+        // Enter as a String, exit as an Array.
+        if (msg.hasOwnProperty('groupIds') &&
+            typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
+          useAllGroups = true;
+        } else if (msg.hasOwnProperty('groupIds') &&
+          typeof msg.groupIds === 'string') {
+          useAllGroups = false;
           groupIds = msg.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
-      } else if (typeof node.groupIds === 'string' && node.groupIds === 'ALL') {
-          use_all_groups = true;
-      } else if (typeof node.groupIds === 'string') {
-          groupIds = node.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
+        } else if (typeof node.groupIds === 'string' &&
+            node.groupIds === 'ALL') {
+          useAllGroups = true;
+        } else if (typeof node.groupIds === 'string') {
+          groupIds = node.groupIds.replace(/(\r\n|\n|\r)/gm,
+              '').split(',');
+        }
+
+        node.status({fill: 'green', shape: 'dot', text: 'Transmitting'});
+
+        OrionClient.auth(node.username, node.password).then(
+            (auth) => {
+              const token = auth.token;
+
+              if (useAllGroups) {
+                OrionClient.getAllUserGroups(token).then((result, error) => {
+                  /* FIXME This probably won't populate groupIds because
+                      it's not async.
+                   */
+                  result.groups.forEach((group) => groupIds.push(group.id));
+                  OrionClient.utils.lyre(
+                      token, groupIds, msg.message, msg.media, target);
+                });
+              } else {
+                OrionClient.utils.lyre(
+                    token, groupIds, msg.message, msg.media, target);
+              }
+            });
+        node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
       }
-
-      var lyreOptions = {
-        'username': node.username,
-        'password': node.password,
-        'groupIds': groupIds,
-        'use_all_groups': use_all_groups,
-        'message': msg.hasOwnProperty('message') ? msg.message : null,
-        'media': msg.hasOwnProperty('media') ? msg.media : null,
-        'target': msg.hasOwnProperty('target') ? msg.target : null,
-        'target_self': msg.hasOwnProperty('target_self') ? msg.target_self : null
-      };
-      node.status({fill: 'green', shape: 'dot', text: 'Transmitting'});
-      orion.lyre(lyreOptions);
-      node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+      Promise.resolve()
+          .then(() => {
+            if (msg.message === 'unit_test') {
+              this.warn('unit_test');
+            }
+          });
     });
 
-    node.on('close', function() {
-      return;
-    });
+    node.on('close', () => {});
   }
+  RED.nodes.registerType('orion_tx', OrionTXNode,
+      {credentials: {username: {type: 'text'}, password: {type: 'text'}}});
 
-  RED.nodes.registerType('orion_tx', OrionTXNode, {
-    credentials: {
-      username: {type: 'text'},
-      password: {type: 'text'},
-    },
-  });
-
-  /*
-  OrionRXNode
-    Node for Receiving (RX) events from Orion.
-  */
+  /**
+   * Node for Receiving (RX) events from Orion.
+   * @param config {OrionConfig} Orion Config Meta-Node.
+   * @constructor
+   */
   function OrionRXNode(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
-    var token;
-    var user_id;
-    var ws;
-    var emsg;
-    var use_all_groups;
-
-    var verbosity = config.verbosity;
-    var ignoreSelf = config.ignoreSelf;
+    const node = this;
+    let ws;
+    const verbosity = config.verbosity;
+    const ignoreSelf = config.ignoreSelf;
 
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
 
-    var _groupIds = node.orion_config.groupIds;
-    if (_groupIds === 'ALL') {
-        use_all_groups = true;
-        node.groupIds = [];
-    } else {
-        use_all_groups = false;
-        node.groupIds = _groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
-    }
-
     node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
 
-    // Called for every Event received from the Event Stream:
-    function eventCallback(data) {
-      node.status({fill: 'green', shape: 'dot', text: 'Receiving'});
-      switch (data.event_type) {
-        case 'ptt':
-          /*
-          If 'ignoreSelf' is False: Send PTTs (target and group).
-          if 'ignoreSelf' is True: Send PTTs (target and group) as long as
-            they ARE NOT from me! (Stop hitting yourself!)
-          */
-          if (!ignoreSelf || user_id !== data.sender) {
-            node.send([
-              data,  // Output 0 (all)
-              data,  // Output 1 (ptt)
-              null,  // Output 2 (userstatus)
-              // 'target_user_id' is only set on direct/target messages
-              data.hasOwnProperty('target_user_id') ? data : null  // Output 3 (direct/target)
-            ]);
-          }
-          break;
-        case 'userstatus':
-          if (!ignoreSelf || user_id !== data.id) {
-            node.send([data, null, data, null]);
-          }
-          break;
-        default:
-          node.send([data, null, null, null]);
-          break;
-      }
-      node.status({fill: 'yellow', shape: 'dot', text: 'Connected & Idle'});
-      return;
-    }
-
-    orion.authPromise(node.username, node.password)
-        .then(
-            function(auth) {
-                if (!auth.token) {
-                    emsg = 'No Auth Token for username=' + node.username;
-                    node.error(emsg);
-                    node.status({fill: 'red', shape: 'dot', text: emsg});
-                } else if (auth.token) {
-                    token = auth.token;
-                    user_id = auth.id;
-                    if (use_all_groups === true) {
-                        var url = 'https://api.orionlabs.io/api/users/' + user_id;
-                        console.log(`${new Date().toISOString()} ${node.id} use_all_groups=true`);
-                        request(
-                            {
-                                url: url,
-                                method: 'GET',
-                                headers: {'Authorization': token},
-                            },
-                            function(error, response, body) {
-                                if (error) {
-                                    console.log(
-                                        `${new Date().toISOString()} ${node.id} get user error=${error}`
-                                    );
-                                    console.log(
-                                        `${new Date().toISOString()} ${node.id} response=${response}`
-                                    );
-                                } else {
-                                    var body_groups = JSON.parse(body).groups;
-                                    body_groups.forEach(function (group) {
-                                        node.groupIds.push(group.id);
-                                    });
-                                    orion.engage(token, node.groupIds, verbosity);
-                                    node.status(
-                                        {fill: 'green', shape: 'dot', text: 'Engaged (' + verbosity + ')'});
-                                }
-                            }
-                        );
-                    } else {
-                        orion.engage(token, node.groupIds, verbosity);
-                        node.status(
-                            {fill: 'green', shape: 'dot', text: 'Engaged (' + verbosity + ')'});
-                    }
-
-                    var ws_url = 'wss://alnilam.orionlabs.io/stream/wss'
-                    var ws_opts = {'headers': {'Authorization': token}}
-
-                    function startWS() {
-                        ws = new WebSocket(ws_url, ws_opts);
-                        ws.onopen = function(evt) {
-                            console.debug(
-                                `${new Date().toISOString()} ${node.id} ws.onopen`
-                            );
-                            node.status(
-                                {fill: 'green', shape: 'dot', text: 'Connected'});
-                        };
-
-                        ws.onmessage = function(data, flags, number) {
-                            console.debug(
-                                `${new Date().toISOString()} ${node.id} ws.onmessage`
-                            );
-
-                            var event_data = JSON.parse(data.data);
-
-                            console.debug(
-                                `${new Date().toISOString()} ${node.id} ws.onmessage event_data.event_type=${event_data.event_type} event_data.eventId=${event_data.eventId}`
-                            );
-
-                            // Respond to Orion's in-band Ping/Pong (EventStream legacy)
-                            if (event_data.event_type === 'ping') {
-                              node.debug('Ping Received.');
-                              // Respond to Engage's Ping/Pong
-                              orion.pong(token)
-                                .then(function(response) {
-                                  node.debug('Pong succeeded.');
-                                  node.status(
-                                      {fill: 'green', shape: 'dot', text: 'Engaged'});
-                                })
-                                .catch(function(response) {
-                                  node.debug('Pong failed, calling engage()');
-                                  node.status(
-                                    {fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
-                                  orion.engage(token, node.groupIds);
-                                });
-                            }
-
-                            eventCallback(event_data);
-                        };
-
-                        ws.onclose = function (evt) {
-                            console.log(
-                                `${new Date().toISOString()} ${node.id} ws.onclose err=${evt.code}`
-                            );
-                            if (evt.code !== 4158) {
-                                console.log(
-                                    `${new Date().toISOString()} ${node.id} Closing.`
-                                );
-                                ws = null;
-                                setTimeout(function() {
-                                    startWS();
-                                }, 5000);
-                            }
-                        }
-                    }
-
-                    startWS();
-
-                }
-            },
-            function(error) {
-                if (error && error.hasOwnProperty('code')) {
-                    node.debug('error.code=' + error.code);
-                    // node.error(error.code === 'ETIMEDOUT');
-
-                    // Set to `true` if the timeout was a connection timeout,
-                    // `false` or `undefined` otherwise.
-                    node.debug('error.connect=' + error.connect);
-                    // node.error(error.connect === true);
-
-                    node.status(
-                        {fill: 'red', shape: 'dot', text: JSON.stringify(error)});
-
-                    node.error(
-                        `${node.id} encountered a connection error (${error.code}). Reconnecting...`
-                    );
-                } else {
-                    node.status({
-                        fill: 'yellow', shape: 'dot', text: 'Unknown State',
-                    });
-                    // node.error('error=' + error);
-                    node.error(
-                        `${node.id} encountered a connection error (${error.code}). Reconnecting...`
-                    );
-                }
-
-                node.status({
-                    fill: 'yellow', shape: 'dot', text: 'Reconnecting',
-                });
+    const resolveGroups = (token) => {
+      return new Promise((resolve, reject) => {
+        if (node.orion_config.groupIds === 'ALL') {
+          OrionClient.getAllUserGroups(token)
+            .then((resolve, reject) => {
+              const _groups = [];
+              resolve.forEach((group) => _groups.push(group.id));
+              return _groups;
             });
+        } else {
+          resolve(node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm,
+            '').split(','));
+        }
+      });
+    };
 
-    node.on('close', function() {
+    OrionClient.auth(node.username, node.password).then((resolve, reject) => {
+      const token = resolve.token;
+      resolveGroups(token).then((resolve, reject) => {
+        OrionClient.engage(token, resolve).then((resolve, reject) => {
+          OrionClient.connectToWebsocket(token).then((websocket) => {
+            ws = websocket;
+
+            websocket.onmessage = (data, flags, number) => {
+              const eventData = JSON.parse(data.data);
+
+              /* console.debug(
+                  `${new Date().toISOString()} ` +
+                  `ws.onmessage ` +
+                  `eventData.event_type=${eventData.event_type} ` +
+                  `event_data.eventId=${eventData.eventId}`,
+              ); */
+
+              switch (eventData.event_type) {
+                case 'ptt':
+                  // Handle PTT Events
+                  /*
+                  If 'ignoreSelf' is False: Send PTTs (target and group).
+                  if 'ignoreSelf' is True: Send PTTs (target and group) as
+                    long as they ARE NOT from me! (Stop hitting yourself!)
+                  */
+                  if (!ignoreSelf || userId !== eventData.sender) {
+                    node.send([
+                      eventData, // Output 0 (all)
+                      eventData, // Output 1 (ptt)
+                      null, // Output 2 (userstatus)
+                      // 'target_user_id' is only set on direct/target messages
+                      // Output 3 (direct/target)
+                      eventData.hasOwnProperty(
+                          'target_user_id') ? eventData : null,
+                    ]);
+                  }
+                  break;
+                case 'userstatus':
+                  // Handle Userstatus Events
+                  if (!ignoreSelf || userId !== eventData.id) {
+                    node.send([eventData, null, eventData, null]);
+                  }
+                  break;
+                case 'ping':
+                  // Handle Ping Events
+                  OrionClient.pong(token)
+                      .then((resolve, reject) => {
+                        node.status(
+                            {fill: 'green', shape: 'dot', text: 'Engaged'});
+                      })
+                      .catch((resolve, reject) => {
+                        node.status({
+                          fill: 'yellow', shape: 'dot', text: 'Re-engaging'});
+                        OrionClient.engage(token, groups)
+                            .then((resolve, reject) => {
+                              node.status({
+                                fill: 'green', shape: 'dot', text: 'Engaged'});
+                            })
+                            .catch((resolve, reject) => {
+                              new Error('Unable to re-engage');
+                            });
+                      });
+                  break;
+                default:
+                  // Handle undefined Events
+                  node.send([eventData, null, null, null]);
+                  break;
+              }
+              node.status(
+                  {fill: 'yellow', shape: 'dot', text: 'Connected & Idle'});
+            };
+
+            websocket.onclose = (event) => {
+              console.warn(
+                  `${new Date().toISOString()} ${node.id} ` +
+                  `ws.onclose err=${event.code}`);
+              if (event.code !== 4158) {
+                console.warn(
+                    `${new Date().toISOString()} ${node.id} Closing.`);
+                websocket = null;
+                ws = null;
+              }
+            };
+          });
+        });
+      });
+    });
+
+    node.on('close', () => {
       node.debug(`${node.id} Closing OrionRX.`);
       try {
-          ws.close(4158);
-      } catch(err) {
-          console.log(
-              `${new Date().toISOString()} ${node.id} Caught err=${err}`
-          );
+        ws.close(4158);
+      } catch (err) {
+        console.error(
+            `${new Date().toISOString()} ${node.id} Caught err=${err}`);
       }
       node.status({fill: 'red', shape: 'dot', text: 'Disconnected'});
     });
   }
-
   RED.nodes.registerType('orion_rx', OrionRXNode, {
     credentials: {
       username: {type: 'text'},
       password: {type: 'text'},
-      groupIds: {type: 'text'},
-    },
-  });
+      groupIds: {type: 'text'}}});
 
-  /*
-  OrionEncode
-    Node for Encoding Orion audio format media.
-  */
+  /**
+   * Node for encoding PCM/WAV to Orion Opus.
+   * @param config
+   * @constructor
+   */
   function OrionEncode(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
+    const node = this;
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
-    function wav2ovCallback(response) {
-      node.send(response);
-    }
-
-    node.on('input', function(msg) {
+    node.on('input', (msg) => {
       if (msg.hasOwnProperty('payload')) {
         node.status({fill: 'green', shape: 'dot', text: 'Encoding'});
-        orion.locrisWAV2OV(msg, wav2ovCallback);
+        OrionClient.utils.wav2ov(msg).then((resolve, reject) => {
+          node.send(resolve);
+        });
         node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
       } else {
         node.send(msg);
@@ -369,24 +290,23 @@ module.exports = function(RED) {
   }
   RED.nodes.registerType('orion_encode', OrionEncode);
 
-  /*
-  OrionTranscribe
-    Node for Transcribing Orion audio format media.
-  */
+  /**
+   * Node for transcribing Orion Audio to Text.
+   * @param config
+   * @constructor
+   */
   function OrionTranscribe(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
+    const node = this;
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
-    function sttCallback(response) {
-      node.send(response);
-    }
-
-    node.on('input', function(msg) {
+    node.on('input', (msg) => {
       if (msg.hasOwnProperty('media')) {
         node.status({fill: 'green', shape: 'dot', text: 'Encoding'});
-        orion.locrisSTT(msg, sttCallback);
+        OrionClient.utils.stt(msg).then((resolve, reject) => {
+          node.send(resolve);
+        });
         node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
       } else {
         node.send(msg);
@@ -395,25 +315,23 @@ module.exports = function(RED) {
   }
   RED.nodes.registerType('orion_transcribe', OrionTranscribe);
 
-  /*
-  OrionTranslate
-    Node for Translating Orion audio from one language to another.
-  */
+  /**
+   * Node for translating Orion Audio events between languages.
+   * @param config {OrionConfig}
+   * @constructor
+   */
   function OrionTranslate(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
+    const node = this;
+
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
-    function translateCallback(response) {
-      node.send(response);
-    }
-
-    node.on('input', function(msg) {
+    node.on('input', (msg) => {
       if (msg.hasOwnProperty('media')) {
-        node.status({fill: 'green', shape: 'dot', text: 'Encoding'});
+        node.status({fill: 'green', shape: 'dot', text: 'Translating'});
         msg.input_lang = config.inputlanguageCode;
         msg.output_lang = config.outputlanguageCode;
-        orion.locrisTranslate(msg, translateCallback);
+        OrionClient.utils.translate(msg, (response) => node.send(response));
         node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
       } else {
         node.send(msg);
@@ -422,25 +340,22 @@ module.exports = function(RED) {
   }
   RED.nodes.registerType('orion_translate', OrionTranslate);
 
-  /*
-  OrionDecode
-    Node for Decoding Orion audio format media.
-  */
+  /**
+   * Decode Orion Opus files to WAV/PCM.
+   * @param config
+   * @constructor
+   */
   function OrionDecode(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
+    const node = this;
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
-    function ov2wavCallback(response) {
-      node.send(response);
-    }
-
-    node.on('input', function(msg) {
+    node.on('input', (msg) => {
       if (msg.hasOwnProperty('event_type') && msg.event_type === 'ptt') {
         node.status({fill: 'green', shape: 'dot', text: 'Decoding'});
         msg.return_type = config.return_type;
-        orion.locrisOV2WAV(msg, ov2wavCallback);
+        OrionClient.utils.ov2wav(msg, (response) => node.send(response));
         node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
       } else {
         node.send(msg);
@@ -449,14 +364,14 @@ module.exports = function(RED) {
   }
   RED.nodes.registerType('orion_decode', OrionDecode);
 
-
-  /*
-  OrionLookup
-    Node for Looking Up Orion User & Group info.
-  */
+  /**
+   * Node for looking-up Orion User & Group Profiles.
+   * @param config {OrionConfig}
+   * @constructor
+   */
   function OrionLookup(config) {
     RED.nodes.createNode(this, config);
-    var node = this;
+    const node = this;
 
     node.orion_config = RED.nodes.getNode(config.orion_config);
 
@@ -465,27 +380,66 @@ module.exports = function(RED) {
 
     node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
 
-    function LookupCallback(data) {
-      node.status({fill: 'blue', shape: 'dot', text: 'Lookup'});
-      node.send(data);
-      node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
-    }
+    node.on('input', (msg) => {
+      OrionClient.auth(node.username, node.password).then(
+        (resolve, reject) => {
+          const token = resolve.token;
+          node.status({fill: 'blue', shape: 'dot', text: 'Lookup'});
 
-    node.on('input', function(msg) {
-      orion.auth(node.username, node.password, function(auth) {
-        orion.lookup(auth, msg, LookupCallback);
-      });
+          if (msg.payload && msg.payload === 'whoami') {
+            OrionClient.whoami(token).then((resolve, reject) => {
+              msg.user_info = resolve;
+              const userId = resolve.id;
+              OrionClient.getUserStatus(token, userId)
+                .then((resolve, reject) => {
+                  msg.userstatus_info = resolve;
+                  node.send(msg);
+                });
+            });
+          } else if (msg.event_type && msg.event_type === 'userstatus') {
+            const userId = msg.id;
+            OrionClient.getUser(token, userId).then((resolve, reject) => {
+              msg.user_info = resolve;
+              OrionClient.getUserStatus(token, userId)
+                .then((resolve, reject) => {
+                  msg.userstatus_info = resolve;
+                  node.send(msg);
+                });
+            });
+          } else if (msg.event_type && msg.event_type === 'ptt') {
+            const groupId = msg.id;
+            const userId = msg.sender;
+            OrionClient.getGroup(token, groupId).then((resolve, reject) => {
+              msg.group_info = resolve;
+              OrionClient.getUser(token, userId)
+                .then((resolve, reject) => {
+                  msg.user_info = resolve;
+                  OrionClient.getUserStatus(token, userId)
+                    .then((resolve, reject) => {
+                      msg.userstatus_info = resolve;
+                      node.send(msg);
+                    });
+                });
+            });
+          } else if (msg.group) {
+            const groupId = msg.group;
+            OrionClient.getGroup(token, groupId).then((resolve, reject) => {
+              msg.group_info = resolve;
+              node.send(msg);
+            });
+          } else if (msg.user) {
+            const userId = msg.user;
+            OrionClient.getUser(token, userId).then((resolve, reject) => {
+              msg.user_info = resolve;
+              node.send(msg);
+            });
+          }
+          node.status({fill: 'yellow', shape: 'dot', text: 'Idle'});
+        });
     });
 
-    node.on('close', function() {
-      return;
-    });
+    node.on('close', () => {});
   }
-
   RED.nodes.registerType('orion_lookup', OrionLookup, {
-    credentials: {
-      username: {type: 'text'},
-      password: {type: 'text'},
-    },
-  });
+    credentials: {username: { type: 'text' }, password: { type: 'text' }}});
 };

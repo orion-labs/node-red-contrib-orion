@@ -12,8 +12,8 @@ EXPOSE 1880
 
 COPY . /node-red-contrib-orion
 
-RUN npm install -g node-red
-RUN npm install -g /node-red-contrib-orion
+RUN npm install --unsafe-perm -g node-red
+RUN npm install --unsafe-perm -g /node-red-contrib-orion
 
 CMD node-red
 

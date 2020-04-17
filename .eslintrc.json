@@ -1,8 +1,0 @@
-{
-    "extends": "google",
-    "rules": {
-        "no-var": 0,
-        "indent": 0,
-        "require-jsdoc": 0
-    }
-}

@@ -257,8 +257,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-help-name="orion_tx">
   <p>
-    Orion Output (Transmit) Node. Will transmit Push-To-Talk Events to the
-    Orion Event Stream.
+    Orion Output (Transmit) Node. Will transmit Events to the Orion Event Stream.
   </p>
 
   <h3>Inputs</h3>
@@ -286,6 +285,11 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
       Audio must be encoded in Orion Format.
     </dd>
 
+    <dt>location <span class="property-type">object</span></dt>
+    <dd>
+      If set, can contain the following object structure that will get posted as a userstatus event:
+      { 'lat': 0, 'lng': 0}
+    </dd>
   </dl>
 
   <h3>Details</h3>
