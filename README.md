@@ -12,6 +12,16 @@
   height="128"
 /></a>
 
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/orion-labs/node-red-contrib-orion/graphs/commit-activity)
+[![HitCount](http://hits.dwyl.io/orion-labs/node-red-contrib-orion.svg)](http://hits.dwyl.io/orion-labs/node-red-contrib-orion)
+[![Dependencies Status](https://img.shields.io/david/orion-labs/node-red-contrib-orion.svg)](https://david-dm.org/orion-labs/node-red-contrib-orion)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Issues](https://img.shields.io/github/issues/orion-labs/node-red-contrib-orion.svg?style=flat-square)](https://github.com/orion-labs/node-red-contrib-orion/issues)
+<!--
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+-->
+[![NPM](https://nodei.co/npm/node-red-contrib-orion.png)](https://nodei.co/npm/node-red-contrib-orion/)
+
 
 node-red-contrib-orion
 ======================
