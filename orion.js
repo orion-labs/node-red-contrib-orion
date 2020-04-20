@@ -337,7 +337,9 @@ module.exports = function (RED) {
         node.status({ fill: 'green', shape: 'dot', text: 'Translating' });
         msg.input_lang = config.inputlanguageCode;
         msg.output_lang = config.outputlanguageCode;
-        OrionClient.utils.translate(msg, (response) => node.send(response));
+        OrionClient.utils.translate(msg).then((response) => {
+          node.send(response);
+        });
         node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
       } else {
         node.send(msg);
@@ -360,8 +362,10 @@ module.exports = function (RED) {
     node.on('input', (msg) => {
       if (msg.event_type && msg.event_type === 'ptt') {
         node.status({ fill: 'green', shape: 'dot', text: 'Decoding' });
-        msg.return_type = config.return_type;
-        OrionClient.utils.ov2wav(msg).then((response) => node.send(response));
+        msg.return_type = msg.return_type ? msg.return_type : config.return_type;
+        OrionClient.utils.ov2wav(msg).then((response) => {
+          node.send(response);
+        });
         node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
       } else {
         node.send(msg);

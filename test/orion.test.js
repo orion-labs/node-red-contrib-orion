@@ -171,6 +171,44 @@ describe('OrionDecode', () => {
     });
   });
 
+  it('Should decode Opus to WAV/PCM URL (in-band)', (done) => {
+    const decodeNode = {
+      id: 'decodeNode',
+      type: 'orion_decode',
+      name: 'orion_decode_node',
+      return_type: 'url',
+      wires: [['helperNode']],
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testFlow = [decodeNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const testDecodeNode = helper.getNode('decodeNode');
+      const testHelperNode = helper.getNode('helperNode');
+      testDecodeNode.should.have.property('name', 'orion_decode_node');
+
+      testDecodeNode.receive({
+        media: 'https://alnitak-rx.orionlabs.io/b9577f6f-668f-423b-bb9a-11d1ace77f42.ov',
+        ts: 1587406431.588,
+        id: '81a84c52ff91497aa6182d09e66d50f8',
+        sender: '2a6d61f9023342c8855423ba36128a19',
+        event_type: 'ptt',
+        sender_token_hash: '388b20153a4c47b386120fc3e05c88bc',
+        ptt_seqnum: '1587406432.056607',
+        sender_name: 'G2347',
+        ptt_id: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+        eventId: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+        return_type: 'url',
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('media');
+        msg.should.have.property('media_wav');
+        done();
+      });
+    });
+  });
+
   it('Should decode Opus to WAV/PCM Buffer (selected)', (done) => {
     const decodeNode = {
       id: 'decodeNode',
@@ -198,6 +236,45 @@ describe('OrionDecode', () => {
         sender_name: 'G2347',
         ptt_id: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
         eventId: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('media');
+        msg.should.have.property('payload');
+        msg.payload.should.be.instanceOf(Buffer);
+        done();
+      });
+    });
+  });
+
+  it('Should decode Opus to WAV/PCM Buffer (in-band)', (done) => {
+    const decodeNode = {
+      id: 'decodeNode',
+      type: 'orion_decode',
+      name: 'orion_decode_node',
+      return_type: 'buffer',
+      wires: [['helperNode']],
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testFlow = [decodeNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const testDecodeNode = helper.getNode('decodeNode');
+      const testHelperNode = helper.getNode('helperNode');
+      testDecodeNode.should.have.property('name', 'orion_decode_node');
+
+      testDecodeNode.receive({
+        media: 'https://alnitak-rx.orionlabs.io/b9577f6f-668f-423b-bb9a-11d1ace77f42.ov',
+        ts: 1587406431.588,
+        id: '81a84c52ff91497aa6182d09e66d50f8',
+        sender: '2a6d61f9023342c8855423ba36128a19',
+        event_type: 'ptt',
+        sender_token_hash: '388b20153a4c47b386120fc3e05c88bc',
+        ptt_seqnum: '1587406432.056607',
+        sender_name: 'G2347',
+        ptt_id: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+        eventId: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+        return_type: 'buffer',
       });
 
       testHelperNode.on('input', (msg) => {
@@ -692,6 +769,81 @@ describe('OrionLookup', () => {
       testHelperNode.on('input', (msg) => {
         msg.should.have.property('group_info');
         msg.group_info.should.have.property('id', groups);
+        done();
+      });
+    });
+  });
+});
+
+describe('OrionTranslate', () => {
+  beforeEach((done) => helper.startServer(done));
+
+  afterEach((done) => {
+    helper.unload();
+    helper.stopServer(done);
+  });
+
+  it('Should translate from English to Spanish', (done) => {
+    const encodeNode = {
+      id: 'encodeNode',
+      type: 'orion_encode',
+      name: 'orion_encode_node',
+      wires: [['translateNode']],
+    };
+    const translateNode = {
+      id: 'translateNode',
+      type: 'orion_translate',
+      name: 'orion_translate_node',
+      inputlanguageCode: 'en-US',
+      outputlanguageCode: 'es-MX',
+      wires: [['helperNode']],
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testFlow = [encodeNode, translateNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const testEncodeNode = helper.getNode('encodeNode');
+      const testTranslateNode = helper.getNode('translateNode');
+      const testHelperNode = helper.getNode('helperNode');
+
+      testEncodeNode.should.have.property('name', 'orion_encode_node');
+      testTranslateNode.should.have.property('name', 'orion_translate_node');
+      testHelperNode.should.have.property('name', 'helper_node');
+
+      testEncodeNode.receive({ payload: fs.readFileSync('test/test.wav') });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('translation');
+        msg.translation.should.have.property('transcript');
+        //msg.translation.transcript.should.match(/mira/);
+        msg.translation.should.have.property('translated_text');
+        msg.translation.translated_text.should.match(/mira/);
+        done();
+      });
+    });
+  });
+
+  it('Should do nothing', (done) => {
+    const encodeNode = {
+      id: 'encodeNode',
+      type: 'orion_encode',
+      name: 'orion_encode_node',
+      wires: [['helperNode']],
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testFlow = [encodeNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const testEncodeNode = helper.getNode('encodeNode');
+      const testHelperNode = helper.getNode('helperNode');
+
+      testEncodeNode.should.have.property('name', 'orion_encode_node');
+      testHelperNode.should.have.property('name', 'helper_node');
+
+      testEncodeNode.receive({ taco: 'burrito' });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('taco', 'burrito');
         done();
       });
     });
