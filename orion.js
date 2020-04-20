@@ -168,6 +168,7 @@ module.exports = function (RED) {
         OrionClient.engage(token, groups).then(() => {
           OrionClient.connectToWebsocket(token).then((websocket) => {
             ws = websocket;
+            node.status({ fill: 'yellow', shape: 'dot', text: 'Connected & Idle' });
 
             websocket.onmessage = (data) => {
               const eventData = JSON.parse(data.data);
@@ -239,7 +240,7 @@ module.exports = function (RED) {
 
             websocket.onclose = (event) => {
               console.warn(
-                `${new Date().toISOString()} ${node.id} ` + `ws.onclose err=${event.code}`,
+                `${new Date().toISOString()} ${node.id} ` + `websocket.onclose err=${event.code}`,
               );
               if (event.code !== 4158) {
                 console.warn(`${new Date().toISOString()} ${node.id} Closing.`);
@@ -360,7 +361,7 @@ module.exports = function (RED) {
       if (msg.event_type && msg.event_type === 'ptt') {
         node.status({ fill: 'green', shape: 'dot', text: 'Decoding' });
         msg.return_type = config.return_type;
-        OrionClient.utils.ov2wav(msg, (response) => node.send(response));
+        OrionClient.utils.ov2wav(msg).then((response) => node.send(response));
         node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
       } else {
         node.send(msg);

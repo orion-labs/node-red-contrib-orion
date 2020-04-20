@@ -90,6 +90,150 @@ describe('OrionEncode', () => {
   });
 });
 
+describe('OrionDecode', () => {
+  beforeEach((done) => helper.startServer(done));
+
+  afterEach((done) => {
+    helper.unload();
+    helper.stopServer(done);
+  });
+
+  it('Should decode Opus to WAV/PCM URL (default)', (done) => {
+    const decodeNode = {
+      id: 'decodeNode',
+      type: 'orion_decode',
+      name: 'orion_decode_node',
+      wires: [['helperNode']],
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testFlow = [decodeNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const testDecodeNode = helper.getNode('decodeNode');
+      const testHelperNode = helper.getNode('helperNode');
+      testDecodeNode.should.have.property('name', 'orion_decode_node');
+
+      testDecodeNode.receive({
+        media: 'https://alnitak-rx.orionlabs.io/b9577f6f-668f-423b-bb9a-11d1ace77f42.ov',
+        ts: 1587406431.588,
+        id: '81a84c52ff91497aa6182d09e66d50f8',
+        sender: '2a6d61f9023342c8855423ba36128a19',
+        event_type: 'ptt',
+        sender_token_hash: '388b20153a4c47b386120fc3e05c88bc',
+        ptt_seqnum: '1587406432.056607',
+        sender_name: 'G2347',
+        ptt_id: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+        eventId: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('media');
+        msg.should.have.property('media_wav');
+        done();
+      });
+    });
+  });
+
+  it('Should decode Opus to WAV/PCM URL (selected)', (done) => {
+    const decodeNode = {
+      id: 'decodeNode',
+      type: 'orion_decode',
+      name: 'orion_decode_node',
+      return_type: 'url',
+      wires: [['helperNode']],
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testFlow = [decodeNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const testDecodeNode = helper.getNode('decodeNode');
+      const testHelperNode = helper.getNode('helperNode');
+      testDecodeNode.should.have.property('name', 'orion_decode_node');
+
+      testDecodeNode.receive({
+        media: 'https://alnitak-rx.orionlabs.io/b9577f6f-668f-423b-bb9a-11d1ace77f42.ov',
+        ts: 1587406431.588,
+        id: '81a84c52ff91497aa6182d09e66d50f8',
+        sender: '2a6d61f9023342c8855423ba36128a19',
+        event_type: 'ptt',
+        sender_token_hash: '388b20153a4c47b386120fc3e05c88bc',
+        ptt_seqnum: '1587406432.056607',
+        sender_name: 'G2347',
+        ptt_id: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+        eventId: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('media');
+        msg.should.have.property('media_wav');
+        done();
+      });
+    });
+  });
+
+  it('Should decode Opus to WAV/PCM Buffer (selected)', (done) => {
+    const decodeNode = {
+      id: 'decodeNode',
+      type: 'orion_decode',
+      name: 'orion_decode_node',
+      return_type: 'buffer',
+      wires: [['helperNode']],
+    };
+    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
+    const testFlow = [decodeNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const testDecodeNode = helper.getNode('decodeNode');
+      const testHelperNode = helper.getNode('helperNode');
+      testDecodeNode.should.have.property('name', 'orion_decode_node');
+
+      testDecodeNode.receive({
+        media: 'https://alnitak-rx.orionlabs.io/b9577f6f-668f-423b-bb9a-11d1ace77f42.ov',
+        ts: 1587406431.588,
+        id: '81a84c52ff91497aa6182d09e66d50f8',
+        sender: '2a6d61f9023342c8855423ba36128a19',
+        event_type: 'ptt',
+        sender_token_hash: '388b20153a4c47b386120fc3e05c88bc',
+        ptt_seqnum: '1587406432.056607',
+        sender_name: 'G2347',
+        ptt_id: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+        eventId: 'fc6c96a1e09e4aeda45cc6e5babac1fe',
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('media');
+        msg.should.have.property('payload');
+        msg.payload.should.be.instanceOf(Buffer);
+        done();
+      });
+    });
+  });
+
+  it('Should do nothing', (done) => {
+    const testNode = {
+      id: 'tn1',
+      type: 'orion_decode',
+      name: 'orion_decode',
+      wires: [['hn1']],
+    };
+    const helperNode = { id: 'hn1', type: 'helper' };
+    const testFlow = [testNode, helperNode];
+
+    helper.load(OrionNode, testFlow, {}, () => {
+      const tn1 = helper.getNode('tn1');
+      const hn1 = helper.getNode('hn1');
+      tn1.should.have.property('name', 'orion_decode');
+
+      tn1.receive({ taco: 'burrito' });
+
+      hn1.on('input', (msg) => {
+        msg.should.have.property('taco', 'burrito');
+        done();
+      });
+    });
+  });
+});
+
 describe('OrionTranscribe', () => {
   beforeEach((done) => helper.startServer(done));
 
