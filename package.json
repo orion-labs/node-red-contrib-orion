@@ -1,6 +1,6 @@
 {
     "name": "node-red-contrib-orion",
-    "version": "4.1.0",
+    "version": "4.1.1",
     "description": "Orion Node-RED Nodes.",
     "license": "Apache-2.0",
     "url": "https://orionlabs.io",
@@ -11,7 +11,7 @@
     },
     "homepage": "https://github.com/orion-labs/node-red-contrib-orion",
     "dependencies": {
-        "@orionlabs/node-orion": "link:../node-orion"
+        "@orionlabs/node-orion": "latest"
     },
     "optionalDependencies": {
         "@orionlabs/node-orion-crypto": "latest"
