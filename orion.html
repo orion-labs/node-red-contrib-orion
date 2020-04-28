@@ -696,7 +696,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: 'config',
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: {
@@ -707,15 +707,12 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
       username: { type: 'text' },
       password: { type: 'text' },
     },
-    label: () => {
-      // FIXME: This returns str[0] if groupIds isn't an array.
+    label: function () {
       if (this.name) {
         return this.name;
-      } else if (this.credentials && this.credentials.username) {
-        return this.credentials.username + '@' + this.groupIds[0];
       }
     },
-    oneditprepare: () => {
+    oneditprepare: function () {
       // eslint-disable-next-line no-undef
       this.editor = RED.editor.createEditor({
         id: 'node-config-input-groupIds',
@@ -725,7 +722,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
       this.editor.focus();
     },
-    oneditsave: () => {
+    oneditsave: function () {
       let annot = this.editor.getSession().getAnnotations();
       this.noerr = 0;
       $('#node-config-input-noerr').val(0);
@@ -740,7 +737,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
       this.editor.destroy();
       delete this.editor;
     },
-    oneditcancel: () => {
+    oneditcancel: function () {
       this.editor.destroy();
       delete this.editor;
     },
@@ -763,7 +760,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: nodeCategory,
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: {
@@ -774,7 +771,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     },
     inputs: 0,
     outputs: 4,
-    label: () => {
+    label: function () {
       // eslint-disable-next-line no-undef
       let levelNode = RED.nodes.node(this.orion_config);
       return this.name || (levelNode ? levelNode.label() : 'Orion RX');
@@ -787,7 +784,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: nodeCategory,
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: {
@@ -796,7 +793,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     },
     inputs: 1,
     outputs: 0,
-    label: () => {
+    label: function () {
       // eslint-disable-next-line no-undef
       let levelNode = RED.nodes.node(this.orion_config);
       return this.name || (levelNode ? levelNode.label() : 'Orion TX');
@@ -808,13 +805,13 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: nodeCategory,
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: { name: { value: '' } },
     inputs: 1,
     outputs: 1,
-    label: () => {
+    label: function () {
       return this.name || 'Orion Encode';
     },
   });
@@ -824,13 +821,13 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: nodeCategory,
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: { return_type: { value: 'url' }, name: { value: '' } },
     inputs: 1,
     outputs: 1,
-    label: () => {
+    label: function () {
       return this.name || 'Orion Decode';
     },
   });
@@ -840,7 +837,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: nodeCategory,
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: {
@@ -849,7 +846,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     },
     inputs: 1,
     outputs: 1,
-    label: () => {
+    label: function () {
       return this.name || 'Orion Lookup';
     },
   });
@@ -859,13 +856,13 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: nodeCategory,
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: { name: { value: '' } },
     inputs: 1,
     outputs: 1,
-    label: () => {
+    label: function () {
       return this.name || 'Orion Transcribe';
     },
   });
@@ -875,7 +872,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     category: nodeCategory,
     color: nodeColor,
     icon: nodeIcon,
-    labelStyle: () => {
+    labelStyle: function () {
       return this.name ? 'node_label_italic' : '';
     },
     defaults: {
@@ -887,7 +884,7 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     },
     inputs: 1,
     outputs: 1,
-    label: () => {
+    label: function () {
       if (this.name) {
         return this.name;
       } else if (this.inputlanguageCode && this.outputlanguageCode) {
