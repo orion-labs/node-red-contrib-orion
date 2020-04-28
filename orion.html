@@ -7,8 +7,6 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 -->
 
-<!-- START orion_config -->
-
 <script type="text/x-red" data-template-name="orion_config">
   <div class="form-row">
     <label for="node-config-input-username"><i class="icon-bookmark"></i> Username</label>
@@ -42,70 +40,6 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
-<script type="text/javascript">
-    RED.nodes.registerType('orion_config', {
-        category: 'config',
-        defaults: {
-            groupIds: { value: '', required: false },
-            name: { value: '', required: false }
-        },
-        credentials: {
-            username: { type: 'text' },
-            password: { type: 'text' }
-        },
-        label: function () {
-            return this.name || this.credentials.username + '@' + this.groupIds[0];
-        },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        },
-        oneditprepare: function() {
-            var that = this;
-            this.editor = RED.editor.createEditor({
-                id: 'node-config-input-groupIds',
-                mode: 'ace/mode/text',
-                value: $("#node-config-input-groupIds").val()
-            });
-
-            this.editor.focus();
-        },
-        oneditsave: function() {
-            var annot = this.editor.getSession().getAnnotations();
-            this.noerr = 0;
-            $("#node-config-input-noerr").val(0);
-            for (var k=0; k < annot.length; k++) {
-                //console.log(annot[k].type,":",annot[k].text, "on line", annot[k].row);
-                if (annot[k].type === "error") {
-                    $("#node-input-noerr").val(annot.length);
-                    this.noerr = annot.length;
-                }
-            }
-            $("#node-config-input-groupIds").val(this.editor.getValue());
-            this.editor.destroy();
-            delete this.editor;
-        },
-        oneditcancel: function() {
-            this.editor.destroy();
-            delete this.editor;
-        },
-        oneditresize: function(size) {
-            var rows = $("#dialog-form>div:not(.node-text-editor-row)");
-            var height = $("#dialog-form").height();
-            for (var i=0; i<rows.size(); i++) {
-                height -= $(rows[i]).outerHeight(true);
-            }
-            var editorRow = $("#dialog-form>div.node-text-editor-row");
-            height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
-            $(".node-text-editor").css("height",height+"px");
-            this.editor.resize();
-        }
-    });
-</script>
-
-<!-- END orion_config -->
-
-
-<!-- START orion_rx -->
 
 <script type="text/x-red" data-template-name="orion_rx">
   <div class="form-row">
@@ -138,17 +72,18 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   <p>
     Orion Input (Receive) Node. Receives Events from the Orion Event Stream:
     <ul>
-      <li>Push-To-Talk (PTT) [direct & group]</li>
-      <li>User Status [including location]</li>
+      <li>Push-To-Talk Voice (PTT) [direct & group]</li>
+      <li>Multimedia Messages (text, image, file, etc) [direct & group]</li>
+      <li>User Status [including location & indoor 3D location]</li>
       <li>User Presence [online, offline, muted]</li>
       <li>User Telemetry [sensors, other data]</li>
     </ul>
     Events are automatically filtered and split into four outputs:
     <ul>
-      <li><b>Output 0</b> - All Events (ptt, userstatus, etc.)</li>
-      <li><b>Output 1</b> - Push-to-Talk Events Only (ptt)</li>
+      <li><b>Output 0</b> - All Events (ptt, multimedia, userstatus, etc.)</li>
+      <li><b>Output 1</b> - Push-to-Talk Voice Events Only (ptt)</li>
       <li><b>Output 2</b> - User Status Events Only (userstatus)</li>
-      <li><b>Output 3</b> - Direct (One-to-One) Push-to-Talk Events Only (ptt)</li>
+      <li><b>Output 3</b> - Direct (One-to-One) Push-to-Talk Voice Events Only (ptt)</li>
     </ul>
   </p>
 
@@ -156,25 +91,26 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
   <h3>Outputs</h3>
 
-  <h4>Push-To-Talk Events</h4>
+  <h4>Push-To-Talk Voice Events</h4>
   <dl class="message-properties">
 
     <dt>event_type <span class="property-type">string</span></dt>
-    <dd>
-      Type of Event received. (<code>ptt</code>)
-    </dd>
+    <dd>Type of Event received. (<code>ptt</code>)</dd>
 
     <dt>sender <span class="property-type">string</span></dt>
     <dd>UID of User transmitting this Event.</dd>
 
     <dt>sender_name <span class="property-type">string</span></dt>
-    <dd>Name of User transmitting this event.</dd>
+    <dd>Profile name of User transmitting this event.</dd>
 
     <dt>media <span class="property-type">string</span></dt>
-    <dd>URL to audio stream being transmitted.</dd>
+    <dd>URL to voice stream being transmitted.</dd>
 
     <dt>target_user_id <span class="property-type">string</span></dt>
     <dd>If present, indicates that a Direct Message (one-to-one) was received.</dd>
+
+    <dt>stream_key <span class="property-type">string</span></dt>
+    <dd>If present, indicates that the media was encrypted using this key.</dd>
   </dl>
 
   <h4>User Status Events</h4>
@@ -189,59 +125,128 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
     <dd>UID of User for whom the User Status event represents.</dd>
 
     <dt>location <span class="property-type">object</span></dt>
-    <dd>
-      <code>lat, lng, alt</code> & <code>accuracy</code> of User's location, if
-      available.
-    </dd>
+    <dd>User's location, if available.</dd>
+    <dd><code>lat</code> (<span class="property-type">float</span>) Latitude</dd>
+    <dd><code>lng</code> (<span class="property-type">float</span>) Longitude</dd>
+    <dd><code>alt</code> (<span class="property-type">float</span>) Altitude</dd>
+    <dd><code>accuracy</code> (<span class="property-type">int</span>) Accuracy</dd>
+    <dd><code>timestamp</code> (<span class="property-type">float</span>) Timestamp</dd>
+
+    <dt>indoor_location <span class="property-type">object</span></dt>
+    <dd>User's indoor (3D) Location, if available.</dd>
+    <dd><code>lat</code> (<span class="property-type">float</span>) Latitude</dd>
+    <dd><code>lng</code> (<span class="property-type">float</span>) Longitude</dd>
+    <dd><code>alt</code> (<span class="property-type">float</span>) Altitude</dd>
+    <dd><code>accuracy</code> (<span class="property-type">int</span>) Accuracy</dd>
+    <dd><code>timestampMilliseconds</code> (<span class="property-type">float</span>) Timestamp</dd>
+    <dd><code>buildingName</code> (<span class="property-type">string</span>) Building Name, if known.</dd>
+    <dd><code>buildingId</code> (<span class="property-type">string</span>) Building Id, if known.</dd>
+    <dd><code>elevationGround</code> (<span class="property-type">float</span>) Elevation above local ground level in meters.</dd>
+    <dd><code>elevationMsl</code> (<span class="property-type">float</span>) Elevation above Mean Sea Level (MSL) in meters.</dd>
+    <dd><code>floor</code> (<span class="property-type">string</span>) Floor</dd>
+    <dd><code>horizontalUncertainty</code> (<span class="property-type">float</span>) Horizontal Uncertainty (HDOP)</dd>
+    <dd><code>verticalUncertainty</code> (<span class="property-type">float</span>) Vertical Uncertainty (VDOP)</dd>
 
     <dt>presence <span class="property-type">string</span></dt>
-    <dd>User's state: <code>online</code> or <code>offline</code>.</dd>
+    <dd>User's Presence state: <code>online</code> or <code>offline</code>.</dd>
 
     <dt>muted <span class="property-type">bool</span></dt>
-    <dd>User's audio state if they have a device that supports muting.</dd>
+    <dd>User's audio state (if they have a device that supports muting).</dd>
 
     <dt>groups <span class="property-type">array</span></dt>
-    <dd>User's state in each Group.</dd>
-
+    <dd>User's state in each Group. Will only show groups you are both members of.</dd>
+    <dd><code>[{ group_id: "group id", presence: "state"},]</code></dd>
   </dl>
 
+ <h4>Multimedia Text Events</h4>
+  <dl class="message-properties">
 
+    <dt>event_type <span class="property-type">string</span></dt>
+    <dd>Type of Event received. (<code>text</code>)</dd>
+
+    <dt>mime_type <span class="property-type">string</span></dt>
+    <dd>MIME Type of Event Media. (<code>text/plain</code>)</dd>
+
+    <dt>sender <span class="property-type">string</span></dt>
+    <dd>UID of User transmitting this Event.</dd>
+
+    <dt>sender_name <span class="property-type">string</span></dt>
+    <dd>Profile name of User transmitting this event.</dd>
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to text message being transmitted.</dd>
+
+    <dt>target_user_id <span class="property-type">string</span></dt>
+    <dd>If present, indicates that a Direct Message (one-to-one) was received.</dd>
+
+    <dt>stream_key <span class="property-type">string</span></dt>
+    <dd>If present, indicates that the media was encrypted using this key.</dd>
+  </dl>
+
+ <h4>Multimedia Image Events</h4>
+  <dl class="message-properties">
+
+    <dt>event_type <span class="property-type">string</span></dt>
+    <dd>Type of Event received. (<code>image</code>)</dd>
+
+    <dt>mime_type <span class="property-type">string</span></dt>
+    <dd>MIME Type of Event Media. (<code>image/png</code>)</dd>
+
+    <dt>sender <span class="property-type">string</span></dt>
+    <dd>UID of User transmitting this Event.</dd>
+
+    <dt>sender_name <span class="property-type">string</span></dt>
+    <dd>Profile name of User transmitting this event.</dd>
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to image being transmitted.</dd>
+
+    <dt>thumbnail_url <span class="property-type">string</span></dt>
+    <dd>URL to thumbnail of image being transmitted.</dd>
+
+    <dt>friendly_filename <span class="property-type">string</span></dt>
+    <dd>Friendly filename of image being transmitted.</dd>
+
+    <dt>target_user_id <span class="property-type">string</span></dt>
+    <dd>If present, indicates that a Direct Message (one-to-one) was received.</dd>
+
+    <dt>stream_key <span class="property-type">string</span></dt>
+    <dd>If present, indicates that the media was encrypted using this key.</dd>
+  </dl>
+
+ <h4>Multimedia File Events</h4>
+  <dl class="message-properties">
+
+    <dt>event_type <span class="property-type">string</span></dt>
+    <dd>Type of Event received. (<code>file</code>)</dd>
+
+    <dt>mime_type <span class="property-type">string</span></dt>
+    <dd>MIME Type of Event Media. (<code>application/pdf</code>)</dd>
+
+    <dt>sender <span class="property-type">string</span></dt>
+    <dd>UID of User transmitting this Event.</dd>
+
+    <dt>sender_name <span class="property-type">string</span></dt>
+    <dd>Profile name of User transmitting this event.</dd>
+
+    <dt>media <span class="property-type">string</span></dt>
+    <dd>URL to document being transmitted.</dd>
+
+    <dt>friendly_filename <span class="property-type">string</span></dt>
+    <dd>Friendly filename of document being transmitted.</dd>
+
+    <dt>target_user_id <span class="property-type">string</span></dt>
+    <dd>If present, indicates that a Direct Message (one-to-one) was received.</dd>
+
+    <dt>stream_key <span class="property-type">string</span></dt>
+    <dd>If present, indicates that the media was encrypted using this key.</dd>
+  </dl>
   <h3>Details</h3>
-    <p>Orion Push-To-Talk uses a custom audio encoding. Use the <b>Orion Decode</b>
+    <p>Orion Push-To-Talk Voice uses a custom audio encoding. Use the <b>Orion Decode</b> Node
     as an in-line transform to convert Orion Audio Encoding to WAV.</p>
 
     <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
-
-<script type="text/javascript">
-    RED.nodes.registerType('orion_rx', {
-        category: 'Orion',
-        defaults: {
-            name: { value: '' },
-            verbosity: { value: 'active' },
-            ignoreSelf: { value: false },
-            orion_config: { value: '', type: 'orion_config' },
-        },
-        color: '#0099ff',
-        inputs: 0,
-        outputs: 4,
-        icon: 'orion_trapezium.png',
-        label: function () {
-            var level_node = RED.nodes.node(this.orion_config);
-            return this.name || (level_node ? level_node.label() : 'Orion RX');
-        },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        },
-        outputLabels: ['all', 'ptt', 'userstatus', 'direct']
-      }
-    )
-</script>
-
-<!-- END orion_rx -->
-
-
-<!-- START orion_tx -->
 
 <script type="text/x-red" data-template-name="orion_tx">
   <div class="form-row">
@@ -257,21 +262,22 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
 <script type="text/x-red" data-help-name="orion_tx">
   <p>
-    Orion Output (Transmit) Node. Will transmit Events to the Orion Event Stream.
+    Orion Output (Transmit) Node. Will transmit Events to the Orion Event Stream or update Orion User Status.
   </p>
 
   <h3>Inputs</h3>
 
+  <h4>Push-to-Talk Voice Events</h4>
   <dl class="message-properties">
 
     <dt>group <span class="property-type">string</span></dt>
     <dd>
-      Group ID to send messages to for both broadcast and Direct Messages.
+      Group ID to send messages to (required for both broadcast and Direct Messages).
     </dd>
 
     <dt>target <span class="property-type">string</span></dt>
     <dd>
-      If set, allows a Direct Message to be sent to the specified User (UID).
+      If set, allows a Direct Message to be sent to the specified target User (UID).
     </dd>
 
     <dt>message <span class="property-type">string</span></dt>
@@ -284,13 +290,25 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
       If set, URL to audio stream to transmit.
       Audio must be encoded in Orion Format.
     </dd>
+    </dl>
 
-    <dt>location <span class="property-type">object</span></dt>
-    <dd>
-      If set, can contain the following object structure that will get posted as a userstatus event:
-      { 'lat': 0, 'lng': 0}
-    </dd>
-  </dl>
+    <h4>User Status Events</h4>
+    <dl class="message-properties">
+        <dt>userstatus <span class="property-type">object</span></dt>
+        <dd>
+          If set, can contain the following object structure that will get posted as a userstatus event:
+          <code>
+          {
+            location: {
+              lat: 0.0,
+              lng: 0.0,
+              alt: 0.0,
+              accuracy: 0
+            }
+          }
+          </code>
+        </dd>
+    </dl>
 
   <h3>Details</h3>
   <p>The <b>Orion TX</b> node works in several modes:</p>
@@ -318,33 +336,6 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
     <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
-
-<script type="text/javascript">
-    RED.nodes.registerType('orion_tx', {
-        category: 'Orion',
-        defaults: {
-            name: { value: '' },
-            orion_config: { value: '', type: 'orion_config' },
-        },
-        color: '#0099ff',
-        inputs: 1,
-        outputs: 0,
-        icon: 'orion_trapezium.png',
-        label: function () {
-            var level_node = RED.nodes.node(this.orion_config);
-            return this.name || (level_node ? level_node.label() : 'Orion TX');
-        },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        }
-      }
-    )
-</script>
-
-<!-- END orion_tx -->
-
-
-<!-- START orion_decode -->
 
 <script type="text/x-red" data-template-name="orion_decode">
     <div class="form-row">
@@ -386,32 +377,12 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
   <h3>Details</h3>
   <p>This Node is intended to be used as a Transform. That is, place this Node
-  in-line and it will append <code>media_wav</code> to the existing <code>msg</code>
+  in-line and it will append URL <code>media_wav</code> (or Buffer <code>payload</code>) to the existing <code>msg</code>
   object.
   </p>
 
   <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
-
-<script type="text/javascript">
-    RED.nodes.registerType('orion_decode', {
-        category: 'Orion',
-        color: '#0099ff',
-        defaults: { return_type: { value: 'url' }, name: { value: '' } },
-        inputs:1,
-        outputs:1,
-        icon: 'orion_trapezium.png',
-        label: function () { return this.name || 'Orion Decode'; },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        }
-    });
-</script>
-
-<!-- END orion_decode -->
-
-
-<!-- START orion_encode -->
 
 <script type="text/x-red" data-template-name="orion_encode">
     <div class="form-row">
@@ -455,26 +426,6 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
   <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
-
-<script type="text/javascript">
-    RED.nodes.registerType('orion_encode', {
-        category: 'Orion',
-        color: '#0099ff',
-        defaults: { name: { value: '' } },
-        inputs:1,
-        outputs:1,
-        icon: 'orion_trapezium.png',
-        label: function () { return this.name || 'Orion Encode'; },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        }
-    });
-</script>
-
-<!-- END orion_encode -->
-
-
-<!-- START orion_lookup -->
 
 <script type="text/x-red" data-template-name="orion_lookup">
     <div class="form-row">
@@ -534,29 +485,6 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
-<script type="text/javascript">
-    RED.nodes.registerType('orion_lookup', {
-        category: 'Orion',
-        color: '#0099ff',
-        defaults: {
-            name: { value: '' },
-            orion_config: { value: '', type: 'orion_config' },
-        },
-        inputs:1,
-        outputs:1,
-        icon: 'orion_trapezium.png',
-        label: function () { return this.name || 'Orion Lookup'; },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        }
-    });
-</script>
-
-<!-- END orion_lookup -->
-
-
-<!-- START orion_transcribe -->
-
 <script type="text/x-red" data-template-name="orion_transcribe">
     <div class="form-row">
         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
@@ -565,14 +493,14 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 </script>
 
 <script type="text/x-red" data-help-name="orion_transcribe">
-  <p>Orion Trascribe Node. Transcribes Orion Audio to Text.</p>
+  <p>Orion Transcribe Node. Transcribes Orion Push-to-Talk Voice to Text.</p>
 
   <h3>Inputs</h3>
 
   <dl class="message-properties">
 
     <dt>media <span class="property-type">string</span></dt>
-    <dd>URL to Orion audio file to trascribe to text.</dd>
+    <dd>URL to Orion Push-to-Talk Voice media to transcribe to text.</dd>
 
   </dl>
 
@@ -580,8 +508,8 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
   <dl class="message-properties">
 
-    <dt>trascript <span class="property-type">string</span></dt>
-    <dd>Transcribed text of Orion Audio.</dd>
+    <dt>transcript <span class="property-type">string</span></dt>
+    <dd>Transcribed text of Orion Push-to-Talk Voice.</dd>
 
   </dl>
 
@@ -593,26 +521,6 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 
   <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
-
-<script type="text/javascript">
-    RED.nodes.registerType('orion_transcribe', {
-        category: 'Orion',
-        color: '#0099ff',
-        defaults: { name: { value: '' } },
-        inputs:1,
-        outputs:1,
-        icon: 'orion_trapezium.png',
-        label: function () { return this.name || 'Orion Transcribe'; },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        }
-    });
-</script>
-
-<!-- END orion_transcribe -->
-
-
-<!-- START orion_translate -->
 
 <script type="text/x-red" data-template-name="orion_translate">
     <div class="form-row">
@@ -716,14 +624,14 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
 </script>
 
 <script type="text/x-red" data-help-name="orion_translate">
-  <p>Orion Translate Node. Translates Orion Audio to from one language to another.</p>
+  <p>Orion Translate Node. Translates Orion Push-to-Talk Voice from one spoken language to spoken another.</p>
 
   <h3>Inputs</h3>
 
   <dl class="message-properties">
 
     <dt>media <span class="property-type">string</span></dt>
-    <dd>URL to Orion audio to translate.</dd>
+    <dd>URL to Orion Push-to-Talk Voice to translate between spoken languages.</dd>
 
   </dl>
 
@@ -732,40 +640,261 @@ Source:: https://github.com/orion-labs/node-red-contrib-orion
   <dl class="message-properties">
 
     <dt>media <span class="property-type">string</span></dt>
-    <dd>Audio translated to another language.</dd>
+    <dd>URL to translated Orion Push-to-Talk Voice.</dd>
 
   </dl>
 
   <p><a href="https://github.com/orion-labs/node-red-contrib-orion">More info.</a></p>
 </script>
 
-<script type="text/javascript">
-    RED.nodes.registerType('orion_translate', {
-        category: 'Orion',
-        color: '#0099ff',
-        defaults: {
-            name: { value: '' },
-            inputlanguageCode:       { value: undefined },
-            inputlanguageCodeType:   { value: 'str' },
-            outputlanguageCode:       { value: undefined },
-            outputlanguageCodeType:   { value: 'str' }
-        },
-        inputs:1,
-        outputs:1,
-        icon: 'orion_trapezium.png',
-        label: function () {
-            if (this.name) {
-                return this.name;
-            } else if (this.inputlanguageCode && this.outputlanguageCode) {
-                return this.inputlanguageCode + ' -> ' + this.outputlanguageCode;
-            } else {
-                return 'Orion Translate';
-            }
-        },
-        labelStyle: function () {
-            return this.name ? 'node_label_italic' : '';
-        }
-    });
+<script type="text/x-red" data-template-name="orion_geofence">
+    <div class="form-row">
+      <link rel="stylesheet" href="OrionGeoFence/js/leaflet/leaflet.css" />
+      <link rel="stylesheet" href="OrionGeoFence/js/Leaflet.draw/dist/leaflet.draw.css" />
+      <link rel="stylesheet" href="OrionGeoFence/js/L.GeoSearch/src/css/l.geosearch.css" />
+      <div id="node-OrionGeoFence-map" style="width: 100%; height: 400px"></div>
+    </div>
+
+    <div class="form-row">
+      <label for="node-input-inside"><i class="fa fa-sign-in"></i> Action</label>
+      <select id="node-input-inside" value="true" style="width: 70%;">
+        <option value="true">only points inside</option>
+        <option value="false">only points outside</option>
+        <option value="both">add "inarea" property</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Geofence name">
+    </div>
 </script>
 
-<!-- END orion_translate -->
+<script type="text/x-red" data-help-name="orion_geofence">
+   <p>A simple geofence filter node</p>
+   <p>It supports circle and polygons, and will filter all messages that either
+      fall inside or outside the region described depending on the selected
+      mode.</p>
+
+   <p>Alternatively it will add <b>msg.location.inarea</b> to the msg. with values of true/false</p>
+   <p>In this mode if the node is has a name then <b>msg.location.isat</b> will be an array
+   containing a list of named regions that the point is inside of and <b>msg.location.distance</b>
+   will contain an object of name, distance pairs. Where distance is the distance in metres to
+   from the point to the centroid of the region.</p>
+</script>
+
+
+<script type="text/javascript">
+  'use strict';
+
+  const nodeCategory = 'Orion';
+  const nodeColor = '#0099ff';
+  const nodeIcon = 'orion_trapezium.png';
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_config', {
+    category: 'config',
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: {
+      groupIds: { value: '', required: false },
+      name: { value: '', required: false },
+    },
+    credentials: {
+      username: { type: 'text' },
+      password: { type: 'text' },
+    },
+    label: () => {
+      // FIXME: This returns str[0] if groupIds isn't an array.
+      if (this.name) {
+        return this.name;
+      } else if (this.credentials && this.credentials.username) {
+        return this.credentials.username + '@' + this.groupIds[0];
+      }
+    },
+    oneditprepare: () => {
+      // eslint-disable-next-line no-undef
+      this.editor = RED.editor.createEditor({
+        id: 'node-config-input-groupIds',
+        mode: 'ace/mode/text',
+        value: $('#node-config-input-groupIds').val(),
+      });
+
+      this.editor.focus();
+    },
+    oneditsave: () => {
+      let annot = this.editor.getSession().getAnnotations();
+      this.noerr = 0;
+      $('#node-config-input-noerr').val(0);
+      for (var k = 0; k < annot.length; k++) {
+        //console.log(annot[k].type,":",annot[k].text, "on line", annot[k].row);
+        if (annot[k].type === 'error') {
+          $('#node-input-noerr').val(annot.length);
+          this.noerr = annot.length;
+        }
+      }
+      $('#node-config-input-groupIds').val(this.editor.getValue());
+      this.editor.destroy();
+      delete this.editor;
+    },
+    oneditcancel: () => {
+      this.editor.destroy();
+      delete this.editor;
+    },
+    // eslint-disable-next-line no-unused-vars
+    oneditresize: (size) => {
+      let rows = $('#dialog-form>div:not(.node-text-editor-row)');
+      let height = $('#dialog-form').height();
+      for (let i = 0; i < rows.size(); i++) {
+        height -= $(rows[i]).outerHeight(true);
+      }
+      let editorRow = $('#dialog-form>div.node-text-editor-row');
+      height -= parseInt(editorRow.css('marginTop')) + parseInt(editorRow.css('marginBottom'));
+      $('.node-text-editor').css('height', height + 'px');
+      this.editor.resize();
+    },
+  });
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_rx', {
+    category: nodeCategory,
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: {
+      name: { value: '' },
+      verbosity: { value: 'active' },
+      ignoreSelf: { value: false },
+      orion_config: { value: '', type: 'orion_config' },
+    },
+    inputs: 0,
+    outputs: 4,
+    label: () => {
+      // eslint-disable-next-line no-undef
+      let levelNode = RED.nodes.node(this.orion_config);
+      return this.name || (levelNode ? levelNode.label() : 'Orion RX');
+    },
+    outputLabels: ['all', 'ptt voice', 'userstatus', 'direct'],
+  });
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_tx', {
+    category: nodeCategory,
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: {
+      name: { value: '' },
+      orion_config: { value: '', type: 'orion_config' },
+    },
+    inputs: 1,
+    outputs: 0,
+    label: () => {
+      // eslint-disable-next-line no-undef
+      let levelNode = RED.nodes.node(this.orion_config);
+      return this.name || (levelNode ? levelNode.label() : 'Orion TX');
+    },
+  });
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_encode', {
+    category: nodeCategory,
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: { name: { value: '' } },
+    inputs: 1,
+    outputs: 1,
+    label: () => {
+      return this.name || 'Orion Encode';
+    },
+  });
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_decode', {
+    category: nodeCategory,
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: { return_type: { value: 'url' }, name: { value: '' } },
+    inputs: 1,
+    outputs: 1,
+    label: () => {
+      return this.name || 'Orion Decode';
+    },
+  });
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_lookup', {
+    category: nodeCategory,
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: {
+      name: { value: '' },
+      orion_config: { value: '', type: 'orion_config' },
+    },
+    inputs: 1,
+    outputs: 1,
+    label: () => {
+      return this.name || 'Orion Lookup';
+    },
+  });
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_transcribe', {
+    category: nodeCategory,
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: { name: { value: '' } },
+    inputs: 1,
+    outputs: 1,
+    label: () => {
+      return this.name || 'Orion Transcribe';
+    },
+  });
+
+  // eslint-disable-next-line no-undef
+  RED.nodes.registerType('orion_translate', {
+    category: nodeCategory,
+    color: nodeColor,
+    icon: nodeIcon,
+    labelStyle: () => {
+      return this.name ? 'node_label_italic' : '';
+    },
+    defaults: {
+      name: { value: '' },
+      inputlanguageCode: { value: undefined },
+      inputlanguageCodeType: { value: 'str' },
+      outputlanguageCode: { value: undefined },
+      outputlanguageCodeType: { value: 'str' },
+    },
+    inputs: 1,
+    outputs: 1,
+    label: () => {
+      if (this.name) {
+        return this.name;
+      } else if (this.inputlanguageCode && this.outputlanguageCode) {
+        return this.inputlanguageCode + ' -> ' + this.outputlanguageCode;
+      } else {
+        return 'Orion Translate';
+      }
+    },
+  });
+</script>

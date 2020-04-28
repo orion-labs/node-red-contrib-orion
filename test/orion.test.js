@@ -1,3 +1,11 @@
+/**
+ * Tests for Orion Node-RED nodes.
+ *
+ * @author Greg Albrecht <gba@orionlabs.io>
+ * @copyright Orion Labs, Inc. https://www.orionlabs.io
+ * @license Apache-2.0
+ */
+
 'use strict';
 
 const fs = require('fs');
@@ -465,6 +473,41 @@ describe('OrionTXNode', () => {
           call.should.be.calledWithExactly('userstatus');
           done();
         });
+      });
+    });
+  });
+
+  it('Should send unit_test message as a Text event', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+      let tn1 = helper.getNode('testTXNode');
+      let tc1 = helper.getNode('testConfig');
+      tn1.should.have.property('name', 'orion_tx_node');
+      tc1.should.have.property('name', 'orion_config_node');
+
+      tn1.receive({
+        unitTest: 'text',
+        event_type: 'text',
+        payload: 'unit_test',
+      });
+
+      tn1.on('call:warn', (call) => {
+        call.should.be.calledWithExactly('text');
+        done();
       });
     });
   });
