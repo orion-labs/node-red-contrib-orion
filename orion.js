@@ -57,22 +57,24 @@ module.exports = function (RED) {
 
     const resolveGroups = (token, msg) => {
       return new Promise((resolve) => {
-        if (msg.groupids && typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
-          OrionClient.getAllUserGroups(token).then((resolve) => {
+        if (msg.groupIds && typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
+          OrionClient.getAllUserGroups(token).then((response) => {
             const _groups = [];
-            resolve.forEach((group) => _groups.push(group.id));
-            return _groups;
+            response.forEach((group) => _groups.push(group.id));
+            resolve(_groups);
           });
         } else if (msg.groupIds && typeof msg.groupIds === 'string') {
-          resolve(msg.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
-        } else if (typeof node.groupIds === 'string' && node.groupids === 'ALL') {
-          OrionClient.getAllUserGroups(token).then((resolve) => {
+          let _groups = msg.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
+          resolve(_groups);
+        } else if (typeof node.groupIds === 'string' && node.groupIds === 'ALL') {
+          OrionClient.getAllUserGroups(token).then((response) => {
             const _groups = [];
-            resolve.forEach((group) => _groups.push(group.id));
-            return _groups;
+            response.forEach((group) => _groups.push(group.id));
+            resolve(_groups);
           });
         } else if (typeof node.groupIds === 'string') {
-          resolve(node.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
+          let _groups = node.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
+          resolve(_groups);
         }
       });
     };
@@ -192,10 +194,10 @@ module.exports = function (RED) {
     const resolveGroups = (token) => {
       return new Promise((resolve) => {
         if (node.orion_config.groupIds === 'ALL') {
-          OrionClient.getAllUserGroups(token).then((resolve) => {
+          OrionClient.getAllUserGroups(token).then((response) => {
             const _groups = [];
-            resolve.forEach((group) => _groups.push(group.id));
-            return _groups;
+            response.forEach((group) => _groups.push(group.id));
+            resolve(_groups);
           });
         } else {
           resolve(node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
