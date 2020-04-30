@@ -234,11 +234,17 @@ module.exports = function (RED) {
                   shape: 'dot',
                   text: 'Pong Failed',
                 });
-                ws.reconnect(1000, 'Pong Failed');
+                ws.reconnect(4001, 'Pong Failed');
               });
           };
 
           let pongTimeout = setTimeout(pongWS, idleTimeout);
+
+          websocket.addEventListener('open', () => {
+            OrionClient.engage(token, groups, verbosity).then(() => {
+              node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
+            });
+          });
 
           websocket.addEventListener('message', (data) => {
             node.status({ fill: 'green', shape: 'square', text: 'Receiving Event' });
@@ -295,16 +301,6 @@ module.exports = function (RED) {
             }
             node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
           });
-          /*
-          websocket.addEventListener('close', (event) => {
-            node.status({ fill: 'red', shape: 'dot', text: 'Closing WebSocket' });
-            console.warn(
-              `${new Date().toISOString()} ${node.id} WebSocket 'close' err=${event.code} reason=${event.reason}`,
-            );
-            if (event.code !== 4158) {
-              ws.reconnect(event.code, event.reason);
-            }
-          }); */
         });
       });
     });
