@@ -216,7 +216,7 @@ module.exports = function (RED) {
             ws = websocket;
             node.status({ fill: 'yellow', shape: 'dot', text: 'Connected & Idle' });
 
-            websocket.onmessage = (data) => {
+            websocket.addEventListener('message', (data) => {
               const eventData = JSON.parse(data.data);
 
               /* console.debug(
@@ -293,9 +293,9 @@ module.exports = function (RED) {
                   break;
               }
               node.status({ fill: 'yellow', shape: 'dot', text: 'Connected & Idle' });
-            };
+            });
 
-            websocket.onclose = (event) => {
+            websocket.addEventListener('close', (event) => {
               console.warn(
                 `${new Date().toISOString()} ${node.id} ` + `websocket.onclose err=${event.code}`,
               );
@@ -304,7 +304,7 @@ module.exports = function (RED) {
                 websocket = null;
                 ws = null;
               }
-            };
+            });
           });
         });
       });
