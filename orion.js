@@ -185,8 +185,6 @@ module.exports = function (RED) {
 
     let ws;
 
-    const idleTimeout = process.env.PONG_TIMEOUT || 200000;
-
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
@@ -207,12 +205,13 @@ module.exports = function (RED) {
       });
     };
 
-    OrionClient.auth(node.username, node.password).then((resolve) => {
-      const token = resolve.token;
-      const userId = resolve.id;
+    OrionClient.auth(node.username, node.password).then((response) => {
+      const token = response.token;
+      const userId = response.id;
+      const sessionId = response.sessionId;
 
-      resolveGroups(token).then((resolve) => {
-        const groups = resolve;
+      resolveGroups(token).then((response) => {
+        const groups = response;
 
         OrionClient.connectToWebsocket(token).then((websocket) => {
           ws = websocket;
@@ -221,24 +220,6 @@ module.exports = function (RED) {
           OrionClient.engage(token, groups, verbosity).then(() => {
             node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
           });
-
-          const pongWS = () => {
-            node.status({ fill: 'yellow', shape: 'dot', text: 'Pong' });
-            OrionClient.pong(token)
-              .then(() => {
-                node.status({ fill: 'green', shape: 'dot', text: 'Pong' });
-              })
-              .catch(() => {
-                node.status({
-                  fill: 'red',
-                  shape: 'dot',
-                  text: 'Pong Failed',
-                });
-                ws.reconnect(4001, 'Pong Failed');
-              });
-          };
-
-          let pongTimeout = setTimeout(pongWS, idleTimeout);
 
           websocket.addEventListener('open', () => {
             OrionClient.engage(token, groups, verbosity).then(() => {
@@ -249,10 +230,10 @@ module.exports = function (RED) {
           websocket.addEventListener('message', (data) => {
             node.status({ fill: 'green', shape: 'square', text: 'Receiving Event' });
 
-            clearTimeout(pongTimeout);
-            pongTimeout = setTimeout(pongWS, idleTimeout);
-
             const eventData = JSON.parse(data.data);
+            eventData._sessionId = sessionId;
+
+            let eventArray = [];
 
             switch (eventData.event_type) {
               case 'ptt':
@@ -263,42 +244,56 @@ module.exports = function (RED) {
                   long as they ARE NOT from me! (Stop hitting yourself!)
                 */
                 if (!ignoreSelf || userId !== eventData.sender) {
-                  node.send([
+                  eventArray = [
                     eventData, // Output 0 (all)
                     eventData, // Output 1 (ptt)
                     null, // Output 2 (userstatus)
                     // 'target_user_id' is only set on direct/target messages
                     // Output 3 (direct/target)
                     eventData.target_user_id ? eventData : null,
-                  ]);
+                  ];
                 }
                 break;
               case 'userstatus':
                 // Handle Userstatus Events
                 if (!ignoreSelf || userId !== eventData.id) {
-                  node.send([eventData, null, eventData, null]);
+                  eventArray = [eventData, null, eventData, null];
                 }
                 break;
               case 'ping':
                 // Handle Ping Events
-                pongWS();
+                node.status({ fill: 'yellow', shape: 'dot', text: 'Pong' });
+                OrionClient.pong(token)
+                  .then(() => {
+                    node.status({ fill: 'green', shape: 'dot', text: 'Pong' });
+                  })
+                  .catch(() => {
+                    node.status({
+                      fill: 'red',
+                      shape: 'dot',
+                      text: 'Pong Failed',
+                    });
+                    ws.close(4001, 'Pong Failed');
+                  });
                 // Maybe people want to see ping events?
-                node.send([eventData, null, null, null]);
+                eventArray = [eventData, null, null, null];
                 break;
               case 'text':
                 if (OrionCrypto) {
                   OrionCrypto.decryptEvent(eventData).then((event) => {
-                    node.send([event, null, null, null]);
+                    eventArray = [event, null, null, null];
                   });
                 } else {
-                  node.send([eventData, null, null, null]);
+                  eventArray = [eventData, null, null, null];
                 }
+                eventArray = [eventData, null, null, null];
                 break;
               default:
                 // Handle undefined Events (including multimedia).
-                node.send([eventData, null, null, null]);
+                eventArray = [eventData, null, null, null];
                 break;
             }
+            node.send(eventArray);
             node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
           });
         });
