@@ -172,6 +172,197 @@ module.exports = function (RED) {
     credentials: { username: { type: 'text' }, password: { type: 'text' } },
   });
 
+  function _engageEventStream(node, authToken, group_ids, verbosity = 'active') {
+    return new Promise((resolve, reject) => {
+      OrionClient.connectToWebsocket(authToken).then((websocket) => {
+        node.status({ fill: 'green', shape: 'dot', text: 'Connected' });
+
+        OrionClient.engage(authToken, groups_ids, verbosity).then(() => {
+          node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
+
+          // Return the connection and a lazy promise to disengage the current session.
+          resolve([websocket, () => {
+            return OrionClient.engage(authToken, [], verbosity)
+          }]);
+        }).catch((err) => { // Reject engagement.
+          node.debug(`{node.id} Failed to engage group, attempting to close session websocket: ${err}`)
+
+          try {
+            websocket.close()
+          } catch (err) {
+            console.error('Could not cleanly close session websocket: ', err)
+          }
+
+          reject()
+        });
+      }).catch(reject); // Reject connection.
+    });
+  }
+
+  function _resolveGroups(node, authToken) {
+    return new Promise((resolve) => {
+      if (node.orion_config.groupIds === 'ALL') {
+        OrionClient.getAllUserGroups(authToken).then((response) => {
+          const _groups = [];
+          response.forEach((group) => _groups.push(group.id));
+          resolve(_groups);
+        });
+      } else {
+        resolve(node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
+      }
+    })
+  }
+
+  function _ackPing(node, authToken) {
+    node.status({ fill: 'yellow', shape: 'dot', text: 'Pong' });
+    return OrionClient.pong(token).then(() => {
+      node.status({ fill: 'green', shape: 'dot', text: 'Pong' });
+    }).catch((err) => {
+      console.error('Pong request failed: ', err)
+      node.status({ fill: 'red', shape: 'dot', text: 'Pong Failed' });
+    });
+  }
+
+  function _setIdleStatus(node) {
+    node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
+  }
+
+  function _cleanupEventStreamConnection(node, connection, disengage) {
+    try {
+      disengage ? disengage() : console.warning('Could not disengage group(s), callback not specified.')
+      connection ? connection.close(4158) : console.warning('Could not close websocket, connection not specified.')
+    } catch (err) {
+      console.error(`${new Date().toISOString()} ${node.id} WebSocket error on close: err=`, err);
+    }
+    node.status({ fill: 'red', shape: 'dot', text: 'Disconnected' });
+  }
+
+  function _registerEventStreamListeners(node, config) {
+    const verbosity = config.verbosity;
+    const ignoreSelf = config.ignoreSelf;
+    const pingInterval = process.env.PONG_TIMEOUT || 200000;
+
+    let pongIntervalHandle;
+    let idleStatusTriggerHandle;
+
+    // Attempt to setup the event stream engaged against resolved groups.
+    let eventStream = new Promise((resolve, reject) => {
+      OrionClient.auth(node.username, node.password).then(({ token, id }) => {
+        _resolveGroups(node, token).then((group_ids) => {
+          _engageEventStream(node, token, group_ids, verbosity).then(([ connection, disengage ]) => {
+            // Success!
+            node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
+            resolve([token, connection, disengage])
+          }).catch(reject)
+        }).catch(reject)
+      }).catch(reject)
+    })
+
+    // Eventstream engaged, setup message handlers.
+    eventStream.then(([ authToken, connection, disengage ]) => {
+      // If the node itself is closed, clean up the event stream connection.
+      node.on('close', () => {
+        node.debug(`${node.id} Closing OrionRX.`);
+        _cleanupEventStreamConnection(node, connection, disengage)
+      })
+
+
+      // Setup websocket clean-reconnect.
+      connection.addEventListener('close', (event) => {
+        node.debug(`${node.id} Websocket connection closed: ${event}`)
+
+        let { isTrusted, wasClean } = event
+
+        // If a trusted unclean closure was detected (ie. not client closure, or backend change of groups), reload connection.
+        if (isTrusted && !wasClean) {
+          _cleanupEventStreamConnection(node, connection, disengage)
+
+          setTimeout(() => {
+            _registerEventStreamListeners(node, config)
+          }, 0)
+        }
+      })
+
+      // Cleanly reconnect on error (is this desireable behavior?).
+      connection.addEventListener('error', (err) => {
+        console.error('Encountered error on websocket connection, reloading: ', err)
+
+        _cleanupEventStreamConnection(node, connection, disengage)
+        setTimeout(() => {
+          _registerEventStreamListeners(node, config)
+        }, 0)
+      })
+
+      pongIntervalHandle = setInterval(() => { _ackPing(node, authToken) }, pingInterval);
+
+      // Setup event handlers.
+      connection.addEventListener('message', (data) => {
+        clearTimeout(idleStatusTriggerHandle)
+        idleStatusTriggerHandle = setTimeout(setIdleStatus, 10 * 1000)
+
+        const eventData = JSON.parse(data.data);
+
+        switch (eventData.event_type) {
+          case 'ptt':
+            node.status({ fill: 'green', shape: 'square', text: 'PTT Event' });
+
+            // Handle PTT Events
+            /*
+              If 'ignoreSelf' is False: Send PTTs (target and group).
+              if 'ignoreSelf' is True: Send PTTs (target and group) as
+              long as they ARE NOT from me! (Stop hitting yourself!)
+            */
+            if (!ignoreSelf || userId !== eventData.sender) {
+              node.send([
+                eventData, // Output 0 (all)
+                eventData, // Output 1 (ptt)
+                null, // Output 2 (userstatus)
+                // 'target_user_id' is only set on direct/target messages
+                // Output 3 (direct/target)
+                eventData.target_user_id ? eventData : null,
+              ]);
+            }
+            break;
+          case 'userstatus':
+            // Handle Userstatus Events
+            if (!ignoreSelf || userId !== eventData.id) {
+              node.send([eventData, null, eventData, null]);
+            }
+            break;
+          case 'ping':
+            // Handle Ping Events
+            _ackPing(node, authToken).catch()//todo: reconnect
+            // Maybe people want to see ping events?
+            node.send([eventData, null, null, null]);
+            break;
+          case 'text':
+            node.status({ fill: 'green', shape: 'square', text: 'Text Event' });
+
+            if (OrionCrypto) {
+              OrionCrypto.decryptEvent(eventData).then((event) => {
+                node.send([event, null, null, null]);
+              });
+            } else {
+              node.send([eventData, null, null, null]);
+            }
+            break;
+          default:
+            node.status({ fill: 'green', shape: 'square', text: 'Unknown Event' });
+
+            // Handle undefined Events (including multimedia).
+            node.send([eventData, null, null, null]);
+            break;
+        }
+      })
+    }).catch((err) => {
+      // If anything goes wrong during setup, retry connection every 5s.
+      node.debug(`${node.id} Encountered error registering event stream, retrying in 5s: ${err}`);
+      setTimeout(() => {
+        _registerEventStreamListeners(node, config)
+      }, 5 * 1000)
+    })
+  }
+
   /**
    * Node for Receiving (RX) events from Orion.
    * @param config {OrionConfig} Orion Config Meta-Node.
@@ -180,141 +371,16 @@ module.exports = function (RED) {
   function OrionRXNode(config) {
     RED.nodes.createNode(this, config);
     const node = this;
-    const verbosity = config.verbosity;
-    const ignoreSelf = config.ignoreSelf;
-
-    let ws;
-
-    const idleTimeout = process.env.PONG_TIMEOUT || 200000;
 
     node.orion_config = RED.nodes.getNode(config.orion_config);
     node.username = node.orion_config.credentials.username;
     node.password = node.orion_config.credentials.password;
 
-    node.status({ fill: 'red', shape: 'dot', text: 'Disconnected' });
+    node.status({ fill: 'red', shape: 'dot', text: 'Initializing' });
 
-    const resolveGroups = (token) => {
-      return new Promise((resolve) => {
-        if (node.orion_config.groupIds === 'ALL') {
-          OrionClient.getAllUserGroups(token).then((response) => {
-            const _groups = [];
-            response.forEach((group) => _groups.push(group.id));
-            resolve(_groups);
-          });
-        } else {
-          resolve(node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
-        }
-      });
-    };
-
-    OrionClient.auth(node.username, node.password).then((resolve) => {
-      const token = resolve.token;
-      const userId = resolve.id;
-
-      resolveGroups(token).then((resolve) => {
-        const groups = resolve;
-
-        OrionClient.connectToWebsocket(token).then((websocket) => {
-          ws = websocket;
-          node.status({ fill: 'green', shape: 'dot', text: 'Connected' });
-
-          OrionClient.engage(token, groups, verbosity).then(() => {
-            node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
-          });
-
-          const pongWS = () => {
-            node.status({ fill: 'yellow', shape: 'dot', text: 'Pong' });
-            OrionClient.pong(token)
-              .then(() => {
-                node.status({ fill: 'green', shape: 'dot', text: 'Pong' });
-              })
-              .catch(() => {
-                node.status({
-                  fill: 'red',
-                  shape: 'dot',
-                  text: 'Pong Failed',
-                });
-                ws.reconnect(4001, 'Pong Failed');
-              });
-          };
-
-          let pongTimeout = setTimeout(pongWS, idleTimeout);
-
-          websocket.addEventListener('open', () => {
-            OrionClient.engage(token, groups, verbosity).then(() => {
-              node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
-            });
-          });
-
-          websocket.addEventListener('message', (data) => {
-            node.status({ fill: 'green', shape: 'square', text: 'Receiving Event' });
-
-            clearTimeout(pongTimeout);
-            pongTimeout = setTimeout(pongWS, idleTimeout);
-
-            const eventData = JSON.parse(data.data);
-
-            switch (eventData.event_type) {
-              case 'ptt':
-                // Handle PTT Events
-                /*
-                If 'ignoreSelf' is False: Send PTTs (target and group).
-                if 'ignoreSelf' is True: Send PTTs (target and group) as
-                  long as they ARE NOT from me! (Stop hitting yourself!)
-                */
-                if (!ignoreSelf || userId !== eventData.sender) {
-                  node.send([
-                    eventData, // Output 0 (all)
-                    eventData, // Output 1 (ptt)
-                    null, // Output 2 (userstatus)
-                    // 'target_user_id' is only set on direct/target messages
-                    // Output 3 (direct/target)
-                    eventData.target_user_id ? eventData : null,
-                  ]);
-                }
-                break;
-              case 'userstatus':
-                // Handle Userstatus Events
-                if (!ignoreSelf || userId !== eventData.id) {
-                  node.send([eventData, null, eventData, null]);
-                }
-                break;
-              case 'ping':
-                // Handle Ping Events
-                pongWS();
-                // Maybe people want to see ping events?
-                node.send([eventData, null, null, null]);
-                break;
-              case 'text':
-                if (OrionCrypto) {
-                  OrionCrypto.decryptEvent(eventData).then((event) => {
-                    node.send([event, null, null, null]);
-                  });
-                } else {
-                  node.send([eventData, null, null, null]);
-                }
-                break;
-              default:
-                // Handle undefined Events (including multimedia).
-                node.send([eventData, null, null, null]);
-                break;
-            }
-            node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
-          });
-        });
-      });
-    });
-
-    node.on('close', () => {
-      node.debug(`${node.id} Closing OrionRX.`);
-      try {
-        ws.close(4158);
-      } catch (err) {
-        console.error(`${new Date().toISOString()} ${node.id} WebSocket Caught err=${err}`);
-      }
-      node.status({ fill: 'red', shape: 'dot', text: 'Disconnected' });
-    });
+    _registerEventStreamListeners(node, config)
   }
+
   RED.nodes.registerType('orion_rx', OrionRXNode, {
     credentials: {
       username: { type: 'text' },
