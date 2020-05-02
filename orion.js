@@ -227,11 +227,18 @@ module.exports = function (RED) {
       .catch((error) => {
         node.status({ fill: 'red', shape: 'dot', text: 'Pong Failed' });
         node.warn(`Pong Failed: ${error}`);
+      })
+      .finally(() => {
+        _setIdleStatusDelay(node);
       });
   };
 
-  const _setIdleStatus = (node) => {
-    node.status({ fill: 'blue', shape: 'dot', text: 'Idle' });
+  let idleStatusTriggerHandle;
+  const _setIdleStatusDelay = (node, delay = 5) => {
+    clearTimeout(idleStatusTriggerHandle)
+    idleStatusTriggerHandle = setTimeout(() => {
+      node.status({ fill: 'blue', shape: 'dot', text: 'Idle' });
+    }, delay * 1000)
   };
 
   const _cleanupEventStreamConnection = (node, connection, disengage) => {
@@ -275,7 +282,6 @@ module.exports = function (RED) {
     // Eventstream engaged, setup message handlers.
     eventStream
       .then(([token, userId, connection, disengage]) => {
-        let idleStatusTriggerHandle;
         const pongIntervalHandle = setInterval(_ackPing.bind(this, node, token), pingInterval);
 
         // If the node itself is closed, clean up the event stream connection.
@@ -324,8 +330,7 @@ module.exports = function (RED) {
 
         // Setup event handlers.
         connection.addEventListener('message', (data) => {
-          clearTimeout(idleStatusTriggerHandle);
-          idleStatusTriggerHandle = setTimeout(_setIdleStatus.bind(this, node), 10 * 1000, node);
+          _setIdleStatusDelay(node)
 
           const eventData = JSON.parse(data.data);
           let eventArray = [eventData, null, null, null];
@@ -387,6 +392,7 @@ module.exports = function (RED) {
       })
       .catch((err) => {
         // If anything goes wrong during setup, retry connection every 5s.
+        node.status({ fill: 'red', shape: 'square', text: 'Initialization Failed' });
         node.debug(`Encountered error registering event stream, retrying in 5s: ${err}`);
         setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000);
       });
