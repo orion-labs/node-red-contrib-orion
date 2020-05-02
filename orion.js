@@ -107,6 +107,7 @@ module.exports = function (RED) {
         case 'text':
           OrionClient.auth(node.username, node.password).then((response) => {
             const token = response.token;
+            const userId = response.id;
 
             resolveGroups(token, msg).then((response) => {
               let groups = response;
@@ -123,6 +124,7 @@ module.exports = function (RED) {
                   token,
                   msg.cipherPayload || msg.payload,
                   groupId,
+                  msg.target_self ? userId : msg.target,
                   streamKey,
                 )
                   .then(() => {
