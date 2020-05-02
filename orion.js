@@ -181,9 +181,7 @@ module.exports = function (RED) {
           node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
 
           // Return the connection and a lazy promise to disengage the current session.
-          resolve([websocket, () => {
-            return OrionClient.engage(authToken, [], verbosity)
-          }]);
+          resolve([websocket, OrionClient.engage.bind(this, authToken, [], verbosity)]);
         }).catch((err) => { // Reject engagement.
           node.debug(`{node.id} Failed to engage group, attempting to close session websocket: ${err}`)
 
@@ -242,17 +240,12 @@ module.exports = function (RED) {
     const ignoreSelf = config.ignoreSelf;
     const pingInterval = process.env.PONG_TIMEOUT || 200000;
 
-    let pongIntervalHandle;
-    let idleStatusTriggerHandle;
-
     // Attempt to setup the event stream engaged against resolved groups.
-    let eventStream = new Promise((resolve, reject) => {
+    const eventStream = new Promise((resolve, reject) => {
       OrionClient.auth(node.username, node.password).then(({ token, id }) => {
         _resolveGroups(node, token).then((group_ids) => {
           _engageEventStream(node, token, group_ids, verbosity).then(([ connection, disengage ]) => {
-            // Success!
-            node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
-            resolve([token, connection, disengage])
+            resolve([token, connection, disengage]) // Success!
           }).catch(reject)
         }).catch(reject)
       }).catch(reject)
@@ -260,26 +253,35 @@ module.exports = function (RED) {
 
     // Eventstream engaged, setup message handlers.
     eventStream.then(([ authToken, connection, disengage ]) => {
+      let idleStatusTriggerHandle;
+      const pongIntervalHandle = setInterval(_ackPing.bind(this, node, authToken), pingInterval);
+
       // If the node itself is closed, clean up the event stream connection.
       node.on('close', () => {
         node.debug(`${node.id} Closing OrionRX.`);
+
+        clearInterval(pongIntervalHandle)
+        clearTimout(idleStatusTriggerHandle)
+
         _cleanupEventStreamConnection(node, connection, disengage)
       })
-
 
       // Setup websocket clean-reconnect.
       connection.addEventListener('close', (event) => {
         node.debug(`${node.id} Websocket connection closed: ${event}`)
 
-        let { isTrusted, wasClean } = event
+        const { isTrusted, wasClean } = event
 
-        // If a trusted unclean closure was detected (ie. not client closure, or backend change of groups), reload connection.
+        // If a trusted unclean closure was detected (ie. not client-side closure, or a backend change of groups), reload connection.
         if (isTrusted && !wasClean) {
+          console.warning('Encountered unclean closure of websocket, reloading: ', event)
+
           _cleanupEventStreamConnection(node, connection, disengage)
 
-          setTimeout(() => {
-            _registerEventStreamListeners(node, config)
-          }, 0)
+          clearInterval(pongIntervalHandle)
+          clearTimout(idleStatusTriggerHandle)
+
+          setTimeout(_registerEventStreamListeners.bind(this, node, config), 0)
         }
       })
 
@@ -288,17 +290,17 @@ module.exports = function (RED) {
         console.error('Encountered error on websocket connection, reloading: ', err)
 
         _cleanupEventStreamConnection(node, connection, disengage)
-        setTimeout(() => {
-          _registerEventStreamListeners(node, config)
-        }, 0)
-      })
 
-      pongIntervalHandle = setInterval(() => { _ackPing(node, authToken) }, pingInterval);
+        clearInterval(pongIntervalHandle)
+        clearTimout(idleStatusTriggerHandle)
+
+        setTimeout(_registerEventStreamListeners.bind(this, node, config), 0)
+      })
 
       // Setup event handlers.
       connection.addEventListener('message', (data) => {
         clearTimeout(idleStatusTriggerHandle)
-        idleStatusTriggerHandle = setTimeout(setIdleStatus, 10 * 1000)
+        idleStatusTriggerHandle = setTimeout(_setIdleStatus.bind(this, node), 10 * 1000)
 
         const eventData = JSON.parse(data.data);
 
@@ -331,11 +333,12 @@ module.exports = function (RED) {
             break;
           case 'ping':
             // Handle Ping Events
-            _ackPing(node, authToken).catch()//todo: reconnect
+            _ackPing(node, authToken).catch() // TODO: Force reconnect?
             // Maybe people want to see ping events?
             node.send([eventData, null, null, null]);
             break;
           case 'text':
+            // Handle Text Message Events
             node.status({ fill: 'green', shape: 'square', text: 'Text Event' });
 
             if (OrionCrypto) {
@@ -347,9 +350,9 @@ module.exports = function (RED) {
             }
             break;
           default:
+            // Handle Unknown Events (including multimedia).
             node.status({ fill: 'green', shape: 'square', text: 'Unknown Event' });
 
-            // Handle undefined Events (including multimedia).
             node.send([eventData, null, null, null]);
             break;
         }
@@ -357,9 +360,7 @@ module.exports = function (RED) {
     }).catch((err) => {
       // If anything goes wrong during setup, retry connection every 5s.
       node.debug(`${node.id} Encountered error registering event stream, retrying in 5s: ${err}`);
-      setTimeout(() => {
-        _registerEventStreamListeners(node, config)
-      }, 5 * 1000)
+      setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000)
     })
   }
 
