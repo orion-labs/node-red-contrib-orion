@@ -183,12 +183,7 @@ module.exports = function (RED) {
               node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
               // Return the connection and a lazy promise to disengage the
               // current session.
-              resolve([
-                websocket,
-                () => {
-                  return OrionClient.engage(token, [], verbosity);
-                },
-              ]);
+              resolve([websocket, OrionClient.engage.bind(this, token, [], verbosity)]);
             })
             .catch((err) => {
               // Reject engagement.
@@ -256,10 +251,8 @@ module.exports = function (RED) {
     const ignoreSelf = config.ignoreSelf;
     const pingInterval = process.env.PING_INTERVAL || 200000;
 
-    let idleStatusTriggerHandle;
-
     // Attempt to setup the event stream engaged against resolved groups.
-    let eventStream = new Promise((resolve, reject) => {
+    const eventStream = new Promise((resolve, reject) => {
       OrionClient.auth(node.username, node.password)
         .then(({ token, userId }) => {
           _resolveGroups(node, token)
@@ -280,9 +273,14 @@ module.exports = function (RED) {
     // Eventstream engaged, setup message handlers.
     eventStream
       .then(([token, userId, connection, disengage]) => {
+        let idleStatusTriggerHandle;
+        const pongIntervalHandle = setInterval(_ackPing.bind(this, node, token), pingInterval);
+
         // If the node itself is closed, clean up the event stream connection.
         node.on('close', () => {
           node.debug(`Closing OrionRX.`);
+          clearInterval(pongIntervalHandle);
+          clearTimeout(idleStatusTriggerHandle);
           _cleanupEventStreamConnection(node, connection, disengage);
         });
 
@@ -292,16 +290,18 @@ module.exports = function (RED) {
           node.warn(`Websocket connection closed: `);
           node.debug(event);
 
-          let { isTrusted, wasClean } = event;
+          const { isTrusted, wasClean } = event;
 
           // If a trusted unclean closure was detected (ie. not client closure,
           // or backend change of groups), reload connection.
           if (isTrusted && !wasClean) {
+            console.warning('Encountered unclean closure of websocket, reloading: ', event);
             _cleanupEventStreamConnection(node, connection, disengage);
 
-            setTimeout(() => {
-              _registerEventStreamListeners(node, config);
-            }, 0);
+            clearInterval(pongIntervalHandle);
+            clearTimeout(idleStatusTriggerHandle);
+
+            setTimeout(_registerEventStreamListeners.bind(this, node, config), 0);
           }
         });
 
@@ -311,9 +311,9 @@ module.exports = function (RED) {
           node.warn(`WebSocket Error: ${event}`);
 
           _cleanupEventStreamConnection(node, connection, disengage);
-          setTimeout(() => {
-            _registerEventStreamListeners(node, config);
-          }, 0);
+          clearInterval(pongIntervalHandle);
+          clearTimeout(idleStatusTriggerHandle);
+          setTimeout(_registerEventStreamListeners.bind(this, node, config), 0);
         });
 
         setInterval(() => {
@@ -323,7 +323,7 @@ module.exports = function (RED) {
         // Setup event handlers.
         connection.addEventListener('message', (data) => {
           clearTimeout(idleStatusTriggerHandle);
-          idleStatusTriggerHandle = setTimeout(_setIdleStatus, 10 * 1000, node);
+          idleStatusTriggerHandle = setTimeout(_setIdleStatus.bind(this, node), 10 * 1000, node);
 
           const eventData = JSON.parse(data.data);
           let eventArray = [eventData, null, null, null];
@@ -386,9 +386,7 @@ module.exports = function (RED) {
       .catch((err) => {
         // If anything goes wrong during setup, retry connection every 5s.
         node.debug(`Encountered error registering event stream, retrying in 5s: ${err}`);
-        setTimeout(() => {
-          _registerEventStreamListeners(node, config);
-        }, 5 * 1000);
+        setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000);
       });
   };
 
