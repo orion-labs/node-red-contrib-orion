@@ -229,12 +229,16 @@ module.exports = function (RED) {
         node.warn(`Pong Failed: ${error}`);
       })
       .finally(() => {
-        setTimeout(_setIdleStatus.bind(this, node), 5 * 1000);
+        _setIdleStatusDelay(node);
       });
   };
 
-  const _setIdleStatus = (node) => {
-    node.status({ fill: 'blue', shape: 'dot', text: 'Idle' });
+  let idleStatusTriggerHandle;
+  const _setIdleStatusDelay = (node, delay = 5) => {
+    clearTimeout(idleStatusTriggerHandle)
+    idleStatusTriggerHandle = setTimeout(() => {
+      node.status({ fill: 'blue', shape: 'dot', text: 'Idle' });
+    }, delay * 1000)
   };
 
   const _cleanupEventStreamConnection = (node, connection, disengage) => {
@@ -278,7 +282,6 @@ module.exports = function (RED) {
     // Eventstream engaged, setup message handlers.
     eventStream
       .then(([token, userId, connection, disengage]) => {
-        let idleStatusTriggerHandle;
         const pongIntervalHandle = setInterval(_ackPing.bind(this, node, token), pingInterval);
 
         // If the node itself is closed, clean up the event stream connection.
@@ -327,8 +330,7 @@ module.exports = function (RED) {
 
         // Setup event handlers.
         connection.addEventListener('message', (data) => {
-          clearTimeout(idleStatusTriggerHandle);
-          idleStatusTriggerHandle = setTimeout(_setIdleStatus.bind(this, node), 5 * 1000, node);
+          _setIdleStatusDelay(node)
 
           const eventData = JSON.parse(data.data);
           let eventArray = [eventData, null, null, null];
