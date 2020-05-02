@@ -225,6 +225,9 @@ module.exports = function (RED) {
       .catch((error) => {
         node.status({ fill: 'red', shape: 'dot', text: 'Pong Failed' });
         node.warn(`Pong Failed: ${error}`);
+      })
+      .finally(() => {
+        setTimeout(_setIdleStatus.bind(this, node), 5 * 1000);
       });
   };
 
@@ -323,7 +326,7 @@ module.exports = function (RED) {
         // Setup event handlers.
         connection.addEventListener('message', (data) => {
           clearTimeout(idleStatusTriggerHandle);
-          idleStatusTriggerHandle = setTimeout(_setIdleStatus.bind(this, node), 10 * 1000, node);
+          idleStatusTriggerHandle = setTimeout(_setIdleStatus.bind(this, node), 5 * 1000, node);
 
           const eventData = JSON.parse(data.data);
           let eventArray = [eventData, null, null, null];
@@ -385,6 +388,7 @@ module.exports = function (RED) {
       })
       .catch((err) => {
         // If anything goes wrong during setup, retry connection every 5s.
+        node.status({ fill: 'red', shape: 'square', text: 'Initialization Failed' });
         node.debug(`Encountered error registering event stream, retrying in 5s: ${err}`);
         setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000);
       });
