@@ -50,6 +50,6 @@
     },
     "scripts": {
         "start": "node-red",
-        "test": "nyc mocha --timeout 20000 'test/**test.js'"
+        "test": "nyc mocha --timeout 40000 --exit 'test/**test.js'"
     }
 }

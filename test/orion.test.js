@@ -577,6 +577,45 @@ describe('OrionTXNode', () => {
       });
     });
   });
+
+  it('Should send test media as a PTT event', (done) => {
+    const testTXNode = {
+      id: 'tn1',
+      type: 'orion_tx',
+      name: 'orion_tx',
+      orion_config: 'tc1',
+    };
+    const testConfig = {
+      id: 'tc1',
+      type: 'orion_config',
+      name: 'orion_config',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    const fileName = 'test/test.ov';
+
+    OrionClient.auth(username, password).then((resolve) => {
+      resolve.should.be.instanceOf(Object);
+      const token = resolve.token;
+      return OrionClient.uploadMedia(token, fileName).then((response) => {
+        const media = response;
+        helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
+          let tn1 = helper.getNode('tn1');
+          let tc1 = helper.getNode('tc1');
+          tn1.should.have.property('name', 'orion_tx');
+          tc1.should.have.property('name', 'orion_config');
+          tn1.receive({ media: media, unitTest: 'ptt' });
+
+          tn1.on('call:warn', (call) => {
+            call.should.be.calledWithExactly('ptt');
+            done();
+          });
+        });
+      });
+    });
+  });
 });
 
 describe('OrionRXNode', () => {

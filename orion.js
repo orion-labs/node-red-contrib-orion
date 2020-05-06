@@ -150,11 +150,22 @@ module.exports = function (RED) {
 
             const target = msg.target_self ? userId : msg.target;
 
-            resolveGroups(token, msg).then((resolve) => {
-              let groups = resolve;
-              OrionClient.utils
-                .lyre(token, groups, msg.message, msg.media, target)
-                .then((resolve) => node.send(resolve));
+            resolveGroups(token, msg).then((response) => {
+              let groups = response;
+              if (msg.media) {
+                groups.forEach((value) => {
+                  const groupId = value;
+                  OrionClient.sendPtt(token, msg.media, groupId, target)
+                    .then(() => {
+                      node.status({ fill: 'green', shape: 'dot', text: 'PTT Sent!' });
+                    })
+                    .catch((result) => node.error(result));
+                });
+              } else {
+                OrionClient.utils
+                  .lyre(token, groups, msg.message, msg.media, target)
+                  .then((resolve) => node.send(resolve));
+              }
             });
           });
           break;
