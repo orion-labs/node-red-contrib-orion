@@ -200,12 +200,12 @@ module.exports = function (RED) {
             })
             .catch((err) => {
               // Reject engagement.
-              node.warn(`Failed to Engage groups, closing WebSocket: ${err}`);
+              node.warn('Failed to Engage groups, closing WebSocket:', err);
 
               try {
-                websocket.close();
+                websocket.close(4158);
               } catch (err) {
-                node.error(`Could not cleanly close WebSocket: ${err}`);
+                node.error('Could not cleanly close WebSocket:', err);
               }
 
               reject();
@@ -237,12 +237,19 @@ module.exports = function (RED) {
       })
       .catch((error) => {
         node.status({ fill: 'red', shape: 'dot', text: 'Pong Failed' });
-        node.warn(`Pong Failed: ${error}`);
+        node.warn('Pong Failed:', error);
+      })
+      .finally(() => {
+        _setIdleStatusDelay(node);
       });
   };
 
-  const _setIdleStatus = (node) => {
-    node.status({ fill: 'blue', shape: 'dot', text: 'Idle' });
+  let idleStatusTriggerHandle;
+  const _setIdleStatusDelay = (node, delay = 5) => {
+    clearTimeout(idleStatusTriggerHandle)
+    idleStatusTriggerHandle = setTimeout(() => {
+      node.status({ fill: 'blue', shape: 'dot', text: 'Idle' });
+    }, delay * 1000)
   };
 
   const _cleanupEventStreamConnection = (node, connection, disengage) => {
@@ -286,7 +293,6 @@ module.exports = function (RED) {
     // Eventstream engaged, setup message handlers.
     eventStream
       .then(([token, userId, connection, disengage]) => {
-        let idleStatusTriggerHandle;
         const pongIntervalHandle = setInterval(_ackPing.bind(this, node, token), pingInterval);
 
         // If the node itself is closed, clean up the event stream connection.
@@ -299,44 +305,35 @@ module.exports = function (RED) {
 
         // Setup websocket clean-reconnect.
         connection.addEventListener('close', (event) => {
+          clearInterval(pongIntervalHandle);
+          clearTimeout(idleStatusTriggerHandle);
+
           node.status({ fill: 'red', shape: 'dot', text: 'WebSocket Closed' });
-          node.warn(`Websocket connection closed: `);
-          node.debug(event);
+          node.warn('Websocket connection closed:', event);
 
-          const { isTrusted, wasClean } = event;
-
-          // If a trusted unclean closure was detected (ie. not client closure,
-          // or backend change of groups), reload connection.
-          if (isTrusted && !wasClean) {
-            console.warning('Encountered unclean closure of websocket, reloading: ', event);
+          // If any non-deliberate (client-side) closure is detected, reload the websocket.
+          if (event.code != 4158) {
+            console.warning('Encountered unclean closure of websocket, reloading with delay: ', event);
             _cleanupEventStreamConnection(node, connection, disengage);
-
-            clearInterval(pongIntervalHandle);
-            clearTimeout(idleStatusTriggerHandle);
-
-            setTimeout(_registerEventStreamListeners.bind(this, node, config), 0);
+            setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000);
           }
         });
 
         // Cleanly reconnect on error (is this desirable behavior?).
         connection.addEventListener('error', (event) => {
-          node.status({ fill: 'red', shape: 'dot', text: 'WebSocket Error' });
-          node.warn(`WebSocket Error: ${event}`);
-
-          _cleanupEventStreamConnection(node, connection, disengage);
           clearInterval(pongIntervalHandle);
           clearTimeout(idleStatusTriggerHandle);
+
+          node.status({ fill: 'red', shape: 'dot', text: 'WebSocket Error' });
+          node.warn('WebSocket Error:', event);
+
+          _cleanupEventStreamConnection(node, connection, disengage);
           setTimeout(_registerEventStreamListeners.bind(this, node, config), 0);
         });
 
-        setInterval(() => {
-          _ackPing(node, token);
-        }, pingInterval);
-
         // Setup event handlers.
         connection.addEventListener('message', (data) => {
-          clearTimeout(idleStatusTriggerHandle);
-          idleStatusTriggerHandle = setTimeout(_setIdleStatus.bind(this, node), 10 * 1000, node);
+          _setIdleStatusDelay(node)
 
           const eventData = JSON.parse(data.data);
           let eventArray = [eventData, null, null, null];
@@ -350,10 +347,10 @@ module.exports = function (RED) {
           switch (eventData.event_type) {
             case 'ptt':
               /*
-              If 'ignoreSelf' is False: Send PTTs (target and group).
-              if 'ignoreSelf' is True: Send PTTs (target and group) as
-              long as they ARE NOT from me! (Stop hitting yourself!)
-            */
+                If 'ignoreSelf' is False: Send PTTs (target and group).
+                if 'ignoreSelf' is True: Send PTTs (target and group) as
+                long as they ARE NOT from me! (Stop hitting yourself!)
+              */
               if (!ignoreSelf || userId !== eventData.sender) {
                 eventArray[1] = eventData;
                 eventArray[3] = eventData.target_user_id ? eventData : null;
@@ -398,7 +395,8 @@ module.exports = function (RED) {
       })
       .catch((err) => {
         // If anything goes wrong during setup, retry connection every 5s.
-        node.debug(`Encountered error registering event stream, retrying in 5s: ${err}`);
+        node.status({ fill: 'red', shape: 'square', text: 'Initialization Failed' });
+        node.debug('Encountered error registering event stream, retrying in 5s:', err);
         setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000);
       });
   };
