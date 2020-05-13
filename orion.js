@@ -152,7 +152,7 @@ module.exports = function (RED) {
             resolveGroups(token, msg).then((response) => {
               let groups = response;
               if (msg.media) {
-                OrionClient.downloadMedia(msg.media).then((response) => {
+                OrionClient.utils.downloadMedia(msg.media).then((response) => {
                   const dlMedia = response;
                   groups.forEach((value) => {
                     const groupId = value;
