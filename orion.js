@@ -15,8 +15,7 @@ module.exports = function (RED) {
 
   let OrionCrypto = false;
   try {
-    const cryptoPath = require.resolve('@orionlabs/node-orion-crypto');
-    console.warn(`Loading OrionCrypto from ${cryptoPath}`);
+    require.resolve('@orionlabs/node-orion-crypto');
     OrionCrypto = require('@orionlabs/node-orion-crypto');
   } catch (exception) {
     OrionCrypto = false;
@@ -153,13 +152,23 @@ module.exports = function (RED) {
             resolveGroups(token, msg).then((response) => {
               let groups = response;
               if (msg.media) {
-                groups.forEach((value) => {
-                  const groupId = value;
-                  OrionClient.sendPtt(token, msg.media, groupId, target)
-                    .then(() => {
-                      node.status({ fill: 'green', shape: 'dot', text: 'PTT Sent!' });
-                    })
-                    .catch((result) => node.error(result));
+                OrionClient.downloadMedia(msg.media).then((response) => {
+                  const dlMedia = response;
+                  groups.forEach((value) => {
+                    const groupId = value;
+                    OrionClient.uploadMedia(token, dlMedia).then((response) => {
+                      const media = response;
+                      OrionClient.sendPtt(token, media, groupId, target)
+                        .then(() => {
+                          node.status({
+                            fill: 'green',
+                            shape: 'dot',
+                            text: 'PTT Sent!',
+                          });
+                        })
+                        .catch((result) => node.error(result));
+                    });
+                  });
                 });
               } else {
                 OrionClient.utils
@@ -246,10 +255,10 @@ module.exports = function (RED) {
 
   let idleStatusTriggerHandle;
   const _setIdleStatusDelay = (node, delay = 5) => {
-    clearTimeout(idleStatusTriggerHandle)
+    clearTimeout(idleStatusTriggerHandle);
     idleStatusTriggerHandle = setTimeout(() => {
       node.status({ fill: 'blue', shape: 'dot', text: 'Idle' });
-    }, delay * 1000)
+    }, delay * 1000);
   };
 
   const _cleanupEventStreamConnection = (node, connection, disengage) => {
@@ -313,7 +322,10 @@ module.exports = function (RED) {
 
           // If any non-deliberate (client-side) closure is detected, reload the websocket.
           if (event.code != 4158) {
-            console.warning('Encountered unclean closure of websocket, reloading with delay: ', event);
+            console.warning(
+              'Encountered unclean closure of websocket, reloading with delay: ',
+              event,
+            );
             _cleanupEventStreamConnection(node, connection, disengage);
             setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000);
           }
@@ -333,7 +345,7 @@ module.exports = function (RED) {
 
         // Setup event handlers.
         connection.addEventListener('message', (data) => {
-          _setIdleStatusDelay(node)
+          _setIdleStatusDelay(node);
 
           const eventData = JSON.parse(data.data);
           let eventArray = [eventData, null, null, null];
