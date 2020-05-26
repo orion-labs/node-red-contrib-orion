@@ -55,26 +55,41 @@ module.exports = function (RED) {
 
     node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
 
+    // Helper for getting all of the groups to which a user belongs.
+    // To Use: Set 'ALL' as a String in your Node Groups config,
+    //         or pass 'ALL' as a String in 'msg.groupIds'.
     const resolveGroups = (token, msg) => {
       return new Promise((resolve) => {
-        if (msg.groupIds && typeof msg.groupIds === 'string' && msg.groupIds === 'ALL') {
-          OrionClient.getAllUserGroups(token).then((response) => {
-            const _groups = [];
-            response.forEach((group) => _groups.push(group.id));
-            resolve(_groups);
-          });
-        } else if (msg.groupIds && typeof msg.groupIds === 'string') {
-          let _groups = msg.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
-          resolve(_groups);
-        } else if (typeof node.groupIds === 'string' && node.groupIds === 'ALL') {
-          OrionClient.getAllUserGroups(token).then((response) => {
-            const _groups = [];
-            response.forEach((group) => _groups.push(group.id));
-            resolve(_groups);
-          });
-        } else if (typeof node.groupIds === 'string') {
-          let _groups = node.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',');
-          resolve(_groups);
+        node.status({ fill: 'blue', shape: 'dot', text: 'Resolving Groups' });
+        let _groupIds = node.groupIds;
+
+        // Allow the user to pass in the group configuration:
+        if (msg.groupIds && typeof msg.groupIds === 'string') {
+          _groupIds = msg.groupIds;
+        }
+
+        switch (_groupIds) {
+          case 'ALL':
+            OrionClient.getAllUserGroups(token).then((response) => {
+              const _groups = [];
+              response.forEach((group) => _groups.push(group.id));
+              if (msg.unitTestSleep) {
+                setTimeout(resolve(_groups), msg.unitTestSleep);
+              } else {
+                resolve(_groups);
+              }
+            });
+            break;
+          default:
+            if (msg.unitTestSleep) {
+              setTimeout(
+                resolve(_groupIds.replace(/(\r\n|\n|\r)/gm, '').split(',')),
+                msg.unitTestSleep,
+              );
+            } else {
+              resolve(_groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
+            }
+            break;
         }
       });
     };
@@ -82,111 +97,162 @@ module.exports = function (RED) {
     node.on('input', (msg) => {
       switch (msg.event_type) {
         case 'userstatus':
-          OrionClient.auth(node.username, node.password).then((resolve) => {
-            const token = resolve.token;
-            OrionClient.updateUserStatus(token, msg)
-              .then((resolve, reject) => {
-                if (resolve) {
-                  node.status({
-                    fill: 'green',
-                    shape: 'dot',
-                    text: 'Updated userstatus',
-                  });
-                  console.log(`${new Date().toISOString()} resolve=${resolve}`);
-                } else if (reject) {
-                  console.error(`${new Date().toISOString()} reject=${reject}`);
-                }
+          OrionClient.auth(node.username, node.password).then((res) => {
+            OrionClient.updateUserStatus(res.token, msg)
+              .then(() => {
+                node.status({
+                  fill: 'green',
+                  shape: 'dot',
+                  text: 'Updated User Status',
+                });
+                msg.unitTest ? Promise.resolve().then(() => this.warn(msg.unitTest)) : null;
               })
               .catch((error) => {
-                console.log(`${new Date().toISOString()} error=${error}`);
+                node.status({
+                  fill: 'red',
+                  shape: 'dot',
+                  text: 'Failed to Update User Status',
+                });
+                node.error(`updateUserStatus ${error}`);
               });
           });
-          node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
+          break;
+        case 'image':
+          OrionClient.auth(node.username, node.password).then((response) => {
+            const token = response.token;
+            const userId = response.id;
+
+            resolveGroups(token, msg)
+              .then((groups) => {
+                groups.forEach((groupId) => {
+                  let streamKey;
+                  if (OrionCrypto) {
+                    streamKey = OrionCrypto.utils.generateStreamKey();
+                    msg.cipherPayload = OrionCrypto.encryptMedia(streamKey, msg.payload);
+                  }
+                  OrionClient.sendImage(
+                    token,
+                    msg.cipherPayload || msg.payload,
+                    groupId,
+                    msg.target_self ? userId : msg.target,
+                    streamKey,
+                    msg.mimeType ? msg.mimeType : msg.mimetype,
+                  )
+                    .then(() => {
+                      node.status({ fill: 'green', shape: 'dot', text: 'Sent Image' });
+                    })
+                    .catch((error) => {
+                      node.status({
+                        fill: 'red',
+                        shape: 'dot',
+                        text: 'Failed to Send Image',
+                      });
+                      node.error(`sendImage ${error}`);
+                    });
+                });
+              })
+              .then(() => {
+                msg.unitTest ? Promise.resolve().then(() => this.warn(msg.unitTest)) : null;
+              });
+          });
           break;
         case 'text':
           OrionClient.auth(node.username, node.password).then((response) => {
             const token = response.token;
             const userId = response.id;
 
-            resolveGroups(token, msg).then((response) => {
-              let groups = response;
-              groups.forEach((value) => {
-                const groupId = value;
-
-                let streamKey;
-                if (OrionCrypto) {
-                  streamKey = OrionCrypto.utils.generateStreamKey();
-                  msg.cipherPayload = OrionCrypto.encryptText(streamKey, msg.payload);
-                }
-
-                OrionClient.sendTextMessage(
-                  token,
-                  msg.cipherPayload || msg.payload,
-                  groupId,
-                  msg.target_self ? userId : msg.target,
-                  streamKey,
-                )
-                  .then(() => {
-                    node.status({
-                      fill: 'green',
-                      shape: 'dot',
-                      text: 'Multimedia Text Message Sent!',
+            resolveGroups(token, msg)
+              .then((groups) => {
+                groups.forEach((groupId) => {
+                  let streamKey;
+                  if (OrionCrypto) {
+                    streamKey = OrionCrypto.utils.generateStreamKey();
+                    msg.cipherPayload = OrionCrypto.encryptText(streamKey, msg.payload);
+                  }
+                  OrionClient.sendText(
+                    token,
+                    msg.cipherPayload || msg.payload,
+                    groupId,
+                    msg.target_self ? userId : msg.target,
+                    streamKey,
+                  )
+                    .then(() => {
+                      node.status({ fill: 'green', shape: 'dot', text: 'Sent Text' });
+                    })
+                    .catch((error) => {
+                      node.status({
+                        fill: 'red',
+                        shape: 'dot',
+                        text: 'Failed to Send Text',
+                      });
+                      node.error(`sendText ${error}`);
                     });
-                  })
-                  .catch((result) => console.log(result));
+                });
+              })
+              .then(() => {
+                msg.unitTest ? Promise.resolve().then(() => this.warn(msg.unitTest)) : null;
               });
-            });
           });
-          node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
           break;
         default:
           // Handle "PTT" Event...
-          node.status({ fill: 'green', shape: 'dot', text: 'Transmitting' });
+          OrionClient.auth(node.username, node.password)
+            .then((resolve) => {
+              const token = resolve.token;
+              const userId = resolve.id;
 
-          OrionClient.auth(node.username, node.password).then((resolve) => {
-            const token = resolve.token;
-            const userId = resolve.id;
+              const target = msg.target_self ? userId : msg.target;
 
-            const target = msg.target_self ? userId : msg.target;
-
-            resolveGroups(token, msg).then((response) => {
-              let groups = response;
-              if (msg.media) {
-                OrionClient.utils.downloadMedia(msg.media).then((response) => {
-                  const dlMedia = response;
-                  groups.forEach((value) => {
-                    const groupId = value;
-                    OrionClient.uploadMedia(token, dlMedia).then((response) => {
-                      const media = response;
+              resolveGroups(token, msg).then((groups) => {
+                if (msg.media) {
+                  OrionClient.utils.getMedia(msg.media).then((response) => {
+                    const media = response;
+                    groups.forEach((value) => {
+                      const groupId = value;
                       OrionClient.sendPtt(token, media, groupId, target)
                         .then(() => {
                           node.status({
                             fill: 'green',
                             shape: 'dot',
-                            text: 'PTT Sent!',
+                            text: 'Sent PTT',
                           });
                         })
-                        .catch((result) => node.error(result));
+                        .catch((error) => {
+                          node.status({
+                            fill: 'red',
+                            shape: 'dot',
+                            text: 'Failed to Send PTT',
+                          });
+                          node.error(`sendPtt ${error}`);
+                        });
                     });
                   });
-                });
-              } else {
-                OrionClient.utils
-                  .lyre(token, groups, msg.message, msg.media, target)
-                  .then((resolve) => node.send(resolve));
-              }
+                } else {
+                  OrionClient.utils
+                    .lyre(token, groups, msg.message, msg.media, target)
+                    .then(() => {
+                      node.status({
+                        fill: 'green',
+                        shape: 'dot',
+                        text: 'Sent PTT',
+                      });
+                    })
+                    .catch((error) => {
+                      node.status({
+                        fill: 'red',
+                        shape: 'dot',
+                        text: 'Failed to Send PTT (lyre)',
+                      });
+                      node.error(`lyre ${error}`);
+                    });
+                }
+              });
+            })
+            .then(() => {
+              msg.unitTest ? Promise.resolve().then(() => this.warn(msg.unitTest)) : null;
             });
-          });
           break;
       }
-
-      node.status({ fill: 'yellow', shape: 'dot', text: 'Idle' });
-
-      Promise.resolve().then(() => {
-        if (msg.unitTest) {
-          this.warn(msg.unitTest);
-        }
-      });
     });
 
     node.on('close', () => {});
@@ -265,10 +331,10 @@ module.exports = function (RED) {
     try {
       disengage
         ? disengage()
-        : console.warning('Could not disengage group(s), callback not specified.');
+        : console.warn('Could not disengage group(s), callback not specified.');
       connection
         ? connection.close(4158)
-        : console.warning('Could not close websocket, connection not specified.');
+        : console.warn('Could not close websocket, connection not specified.');
     } catch (err) {
       console.error(`${new Date().toISOString()} ${node.id} WebSocket error on close: err=`, err);
     }
@@ -306,7 +372,7 @@ module.exports = function (RED) {
 
         // If the node itself is closed, clean up the event stream connection.
         node.on('close', () => {
-          node.debug(`Closing OrionRX.`);
+          node.debug('Closing OrionRX.');
           clearInterval(pongIntervalHandle);
           clearTimeout(idleStatusTriggerHandle);
           _cleanupEventStreamConnection(node, connection, disengage);
@@ -322,10 +388,7 @@ module.exports = function (RED) {
 
           // If any non-deliberate (client-side) closure is detected, reload the websocket.
           if (event.code != 4158) {
-            console.warning(
-              'Encountered unclean closure of websocket, reloading with delay: ',
-              event,
-            );
+            console.warn('Encountered unclean closure of websocket, reloading with delay: ', event);
             _cleanupEventStreamConnection(node, connection, disengage);
             setTimeout(_registerEventStreamListeners.bind(this, node, config), 5 * 1000);
           }
@@ -357,20 +420,8 @@ module.exports = function (RED) {
           });
 
           switch (eventData.event_type) {
-            case 'ptt':
-              /*
-                If 'ignoreSelf' is False: Send PTTs (target and group).
-                if 'ignoreSelf' is True: Send PTTs (target and group) as
-                long as they ARE NOT from me! (Stop hitting yourself!)
-              */
-              if (!ignoreSelf || userId !== eventData.sender) {
-                eventArray[1] = eventData;
-                eventArray[3] = eventData.target_user_id ? eventData : null;
-              }
-              node.send(eventArray);
-              break;
             case 'userstatus':
-              if (!ignoreSelf || userId !== eventData.id) {
+              if (!ignoreSelf || eventData.id !== userId) {
                 eventArray[2] = eventData;
               }
               node.send(eventArray);
@@ -380,29 +431,66 @@ module.exports = function (RED) {
               _ackPing(node, token);
               node.send(eventArray);
               break;
-            case 'text':
-              if (OrionCrypto) {
-                OrionCrypto.decryptEvent(eventData).then((event) => {
-                  eventArray[0] = event;
+            case 'ptt':
+              /* This conditional block is deliberately written long form to
+              help unpack the complexity.
+               */
 
-                  // PING OF DEATH
-                  if (eventArray[0].plainText && eventArray[0].plainText == 'PING OF DEATH') {
-                    _cleanupEventStreamConnection(node, connection, disengage);
-                    setTimeout(() => {
-                      _registerEventStreamListeners(node, config);
-                    }, 0);
+              // First, see if we can decrypt the event:
+              new Promise((resolve) => {
+                if (OrionCrypto) {
+                  // Can encrypt, return decrypted event:
+                  OrionCrypto.decryptEvent(eventData)
+                    .then((event) => resolve(event))
+                    .catch(() => resolve(eventData));
+                } else if (!OrionCrypto) {
+                  // Can't encrypt, return original event:
+                  resolve(eventData);
+                }
+              }).then((event) => {
+                // Set the newly decrypted (or original) event to 0:
+                eventArray[0] = event;
+
+                if (ignoreSelf) {
+                  // If ignoreSelf is set:
+                  if (event.sender === userId) {
+                    // If I am the sender, don't fill out ptt/direct:
+                    node.send(eventArray);
+                  } else if (event.sender !== userId) {
+                    // If I am NOT the sender:
+                    eventArray[1] = event;
+                    eventArray[3] = event.target_user_id ? event : null;
                   }
-
-                  node.send(eventArray);
-                });
-              } else {
+                } else if (!ignoreSelf) {
+                  // If ignoreSelf is NOT set:
+                  eventArray[1] = event;
+                  eventArray[3] = event.target_user_id ? event : null;
+                }
                 node.send(eventArray);
-              }
+              });
               break;
             default:
-              node.send(eventArray);
+              // First, see if we can decrypt the event:
+              new Promise((resolve) => {
+                if (OrionCrypto) {
+                  // Can encrypt, return decrypted event:
+                  OrionCrypto.decryptEvent(eventData)
+                    .then((event) => resolve(event))
+                    .catch(() => resolve(eventData));
+                } else if (!OrionCrypto) {
+                  // Can't encrypt, return original event:
+                  resolve(eventData);
+                }
+              }).then((event) => {
+                // Set the newly decrypted (or original) event to 0:
+                eventArray[0] = event;
+                node.send(eventArray);
+              });
               break;
           }
+
+          // For unit tests:
+          //Promise.resolve().then(() => node.warn(eventData.event_type));
         });
       })
       .catch((err) => {

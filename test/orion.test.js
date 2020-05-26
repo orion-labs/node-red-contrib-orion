@@ -345,12 +345,7 @@ describe('OrionTranscribe', () => {
 
     helper.load(OrionNode, testFlow, {}, () => {
       const testEncodeNode = helper.getNode('encodeNode');
-      const testTranscribeNode = helper.getNode('transcribeNode');
       const testHelperNode = helper.getNode('helperNode');
-
-      testEncodeNode.should.have.property('name', 'orion_encode_node');
-      testTranscribeNode.should.have.property('name', 'orion_transcribe_node');
-      testHelperNode.should.have.property('name', 'helper_node');
 
       testEncodeNode.receive({ payload: fs.readFileSync('test/test.wav') });
 
@@ -362,362 +357,23 @@ describe('OrionTranscribe', () => {
   });
 
   it('Should do nothing', (done) => {
-    const encodeNode = {
-      id: 'encodeNode',
-      type: 'orion_encode',
-      name: 'orion_encode_node',
+    const transcribeNode = {
+      id: 'transcribeNode',
+      type: 'orion_transcribe',
+      name: 'orion_transcribe_node',
       wires: [['helperNode']],
     };
     const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
-    const testFlow = [encodeNode, helperNode];
+    const testFlow = [transcribeNode, helperNode];
 
     helper.load(OrionNode, testFlow, {}, () => {
-      const testEncodeNode = helper.getNode('encodeNode');
+      const testTranscribeNode = helper.getNode('transcribeNode');
       const testHelperNode = helper.getNode('helperNode');
 
-      testEncodeNode.should.have.property('name', 'orion_encode_node');
-      testHelperNode.should.have.property('name', 'helper_node');
-
-      testEncodeNode.receive({ taco: 'burrito' });
+      testTranscribeNode.receive({ taco: 'burrito' });
 
       testHelperNode.on('input', (msg) => {
         msg.should.have.property('taco', 'burrito');
-        done();
-      });
-    });
-  });
-});
-
-describe('OrionTXNode', () => {
-  const username = process.env.TEST_ORION_USERNAME;
-  const password = process.env.TEST_ORION_PASSWORD;
-  const groups = process.env.TEST_ORION_GROUPS;
-
-  beforeEach((done) => helper.startServer(done));
-
-  afterEach((done) => {
-    helper.unload();
-    helper.stopServer(done);
-  });
-  /*
-  it('Auth Credentials should be set', (done) => {
-    should.exist(username);
-    should.exist(password);
-    should.exist(groups);
-    done();
-  });
-*/
-  it('Should send unit_test message as a PTT event', (done) => {
-    const testTXNode = {
-      id: 'tn1',
-      type: 'orion_tx',
-      name: 'orion_tx',
-      orion_config: 'tc1',
-    };
-    const testConfig = {
-      id: 'tc1',
-      type: 'orion_config',
-      name: 'orion_config',
-      groupIds: groups,
-    };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testTXNode, testConfig];
-
-    helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
-      let tn1 = helper.getNode('tn1');
-      let tc1 = helper.getNode('tc1');
-      tn1.should.have.property('name', 'orion_tx');
-      tc1.should.have.property('name', 'orion_config');
-      tn1.receive({ message: 'unitTest', unitTest: 'ptt' });
-
-      tn1.on('call:warn', (call) => {
-        call.should.be.calledWithExactly('ptt');
-        done();
-      });
-    });
-  });
-
-  it('Should set userstatus', (done) => {
-    const testTXNode = {
-      id: 'testTXNode',
-      type: 'orion_tx',
-      name: 'orion_tx_node',
-      orion_config: 'testConfig',
-    };
-    const testConfig = {
-      id: 'testConfig',
-      type: 'orion_config',
-      name: 'orion_config_node',
-      groupIds: groups,
-    };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testTXNode, testConfig];
-    OrionClient.auth(username, password).then((resolve) => {
-      const userId = resolve.id;
-      helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
-        let tn1 = helper.getNode('testTXNode');
-        let tc1 = helper.getNode('testConfig');
-        tn1.should.have.property('name', 'orion_tx_node');
-        tc1.should.have.property('name', 'orion_config_node');
-
-        tn1.receive({
-          unitTest: 'userstatus',
-          event_type: 'userstatus',
-          id: userId,
-          location: { lat: 1.2, lng: 3.4 },
-        });
-
-        tn1.on('call:warn', (call) => {
-          call.should.be.calledWithExactly('userstatus');
-          done();
-        });
-      });
-    });
-  });
-
-  it('Should send unit_test message as a Text event', (done) => {
-    const testTXNode = {
-      id: 'testTXNode',
-      type: 'orion_tx',
-      name: 'orion_tx_node',
-      orion_config: 'testConfig',
-    };
-    const testConfig = {
-      id: 'testConfig',
-      type: 'orion_config',
-      name: 'orion_config_node',
-      groupIds: groups,
-    };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testTXNode, testConfig];
-    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
-      let tn1 = helper.getNode('testTXNode');
-      let tc1 = helper.getNode('testConfig');
-      tn1.should.have.property('name', 'orion_tx_node');
-      tc1.should.have.property('name', 'orion_config_node');
-
-      tn1.receive({
-        unitTest: 'text',
-        event_type: 'text',
-        payload: 'unit_test',
-      });
-
-      tn1.on('call:warn', (call) => {
-        call.should.be.calledWithExactly('text');
-        done();
-      });
-    });
-  });
-
-  it('Should send unit_test message as a PTT event to ALL', (done) => {
-    const testTXNode = {
-      id: 'tn1',
-      type: 'orion_tx',
-      name: 'orion_tx',
-      orion_config: 'tc1',
-    };
-    const testConfig = {
-      id: 'tc1',
-      type: 'orion_config',
-      name: 'orion_config',
-      groupIds: 'ALL',
-    };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testTXNode, testConfig];
-
-    helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
-      let tn1 = helper.getNode('tn1');
-      let tc1 = helper.getNode('tc1');
-      tn1.should.have.property('name', 'orion_tx');
-      tc1.should.have.property('name', 'orion_config');
-      tn1.receive({ message: 'unitTest', unitTest: 'ptt' });
-
-      tn1.on('call:warn', (call) => {
-        call.should.be.calledWithExactly('ptt');
-        done();
-      });
-    });
-  });
-
-  it('Should send unit_test message as a Text event to ALL', (done) => {
-    const testTXNode = {
-      id: 'testTXNode',
-      type: 'orion_tx',
-      name: 'orion_tx_node',
-      orion_config: 'testConfig',
-    };
-    const testConfig = {
-      id: 'testConfig',
-      type: 'orion_config',
-      name: 'orion_config_node',
-      groupIds: 'ALL',
-    };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testTXNode, testConfig];
-    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
-      let tn1 = helper.getNode('testTXNode');
-      let tc1 = helper.getNode('testConfig');
-      tn1.should.have.property('name', 'orion_tx_node');
-      tc1.should.have.property('name', 'orion_config_node');
-
-      tn1.receive({
-        unitTest: 'text',
-        event_type: 'text',
-        payload: 'unit_test',
-      });
-
-      tn1.on('call:warn', (call) => {
-        call.should.be.calledWithExactly('text');
-        done();
-      });
-    });
-  });
-
-  it('Should send test media as a PTT event', (done) => {
-    const testTXNode = {
-      id: 'tn1',
-      type: 'orion_tx',
-      name: 'orion_tx',
-      orion_config: 'tc1',
-    };
-    const testConfig = {
-      id: 'tc1',
-      type: 'orion_config',
-      name: 'orion_config',
-      groupIds: groups,
-    };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testTXNode, testConfig];
-    const fileName = 'test/test.ov';
-
-    OrionClient.auth(username, password).then((resolve) => {
-      resolve.should.be.instanceOf(Object);
-      const token = resolve.token;
-      return OrionClient.uploadMedia(token, fileName).then((response) => {
-        const media = response;
-        helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
-          let tn1 = helper.getNode('tn1');
-          let tc1 = helper.getNode('tc1');
-          tn1.should.have.property('name', 'orion_tx');
-          tc1.should.have.property('name', 'orion_config');
-          tn1.receive({ media: media, unitTest: 'ptt' });
-
-          tn1.on('call:warn', (call) => {
-            call.should.be.calledWithExactly('ptt');
-            done();
-          });
-        });
-      });
-    });
-  });
-});
-
-describe('OrionRXNode', () => {
-  const username = process.env.TEST_ORION_USERNAME;
-  const password = process.env.TEST_ORION_PASSWORD;
-  const groups = process.env.TEST_ORION_GROUPS;
-
-  beforeEach((done) => helper.startServer(done));
-
-  afterEach((done) => {
-    helper.unload();
-    helper.stopServer(done);
-  });
-
-  it('Auth Credentials should be set', (done) => {
-    should.exist(username);
-    should.exist(password);
-    should.exist(groups);
-    done();
-  });
-
-  it('Should load & receive events', (done) => {
-    const testRXNode = {
-      id: 'tn1',
-      type: 'orion_rx',
-      name: 'orion_rx',
-      orion_config: 'tc1',
-      wires: [['hn1'], [], [], []],
-    };
-    const testTXNode = {
-      id: 'tn2',
-      type: 'orion_tx',
-      name: 'orion_tx',
-      orion_config: 'tc1',
-    };
-    const testConfig = {
-      id: 'tc1',
-      type: 'orion_config',
-      name: 'orion_config',
-      groupIds: groups,
-    };
-    const helperNode = { id: 'hn1', type: 'helper' };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testRXNode, testConfig, helperNode, testTXNode];
-
-    helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
-      const tn1 = helper.getNode('tn1');
-      const tn2 = helper.getNode('tn2');
-      const tc1 = helper.getNode('tc1');
-      const hn1 = helper.getNode('hn1');
-      tn1.should.have.property('name', 'orion_rx');
-      tn2.should.have.property('name', 'orion_tx');
-      tc1.should.have.property('name', 'orion_config');
-
-      tn2.receive({ message: 'unit_test' });
-
-      hn1.on('input', (msg) => {
-        msg.should.have.property('event_type', 'ptt');
-        done();
-      });
-    });
-  });
-
-  it('Should load & receive events from ALL', (done) => {
-    const testRXNode = {
-      id: 'tn1',
-      type: 'orion_rx',
-      name: 'orion_rx',
-      orion_config: 'tc1',
-      wires: [['hn1'], [], [], []],
-    };
-    const testTXNode = {
-      id: 'tn2',
-      type: 'orion_tx',
-      name: 'orion_tx',
-      orion_config: 'tc1',
-    };
-    const testConfig = {
-      id: 'tc1',
-      type: 'orion_config',
-      name: 'orion_config',
-      groupIds: 'ALL',
-    };
-    const helperNode = { id: 'hn1', type: 'helper' };
-    const testCreds = { username: username, password: password };
-
-    const testFlow = [testRXNode, testConfig, helperNode, testTXNode];
-
-    helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
-      const tn1 = helper.getNode('tn1');
-      const tn2 = helper.getNode('tn2');
-      const tc1 = helper.getNode('tc1');
-      const hn1 = helper.getNode('hn1');
-      tn1.should.have.property('name', 'orion_rx');
-      tn2.should.have.property('name', 'orion_tx');
-      tc1.should.have.property('name', 'orion_config');
-
-      tn2.receive({ message: 'unit_test' });
-
-      hn1.on('input', (msg) => {
-        msg.should.have.property('event_type', 'ptt');
         done();
       });
     });
@@ -1015,26 +671,586 @@ describe('OrionTranslate', () => {
   });
 
   it('Should do nothing', (done) => {
-    const encodeNode = {
-      id: 'encodeNode',
-      type: 'orion_encode',
-      name: 'orion_encode_node',
-      wires: [['helperNode']],
+    const translateNode = {
+      id: 'orion_translate_id',
+      type: 'orion_translate',
+      name: 'orion_translate_name',
+      inputlanguageCode: 'en-US',
+      outputlanguageCode: 'es-MX',
+      wires: [['helper_id']],
     };
-    const helperNode = { id: 'helperNode', type: 'helper', name: 'helper_node' };
-    const testFlow = [encodeNode, helperNode];
+    const helperNode = { id: 'helper_id', type: 'helper', name: 'helper_name' };
+    const testFlow = [translateNode, helperNode];
 
     helper.load(OrionNode, testFlow, {}, () => {
-      const testEncodeNode = helper.getNode('encodeNode');
-      const testHelperNode = helper.getNode('helperNode');
+      const testTranslateNode = helper.getNode('orion_translate_id');
+      const testHelperNode = helper.getNode('helper_id');
 
-      testEncodeNode.should.have.property('name', 'orion_encode_node');
-      testHelperNode.should.have.property('name', 'helper_node');
+      testTranslateNode.should.have.property('name', 'orion_translate_name');
+      testHelperNode.should.have.property('name', 'helper_name');
 
-      testEncodeNode.receive({ taco: 'burrito' });
+      testTranslateNode.receive({ taco: 'burrito' });
 
       testHelperNode.on('input', (msg) => {
         msg.should.have.property('taco', 'burrito');
+        done();
+      });
+    });
+  });
+});
+
+describe('OrionRXNode', () => {
+  const username = process.env.TEST_ORION_USERNAME;
+  const password = process.env.TEST_ORION_PASSWORD;
+  const groups = process.env.TEST_ORION_GROUPS;
+
+  beforeEach((done) => helper.startServer(done));
+
+  afterEach((done) => {
+    helper.unload();
+    helper.stopServer(done);
+  });
+
+  it('Should receive a PTT Event', (done) => {
+    const orionRXNode = {
+      id: 'orion_rx_id',
+      type: 'orion_rx',
+      name: 'orion_rx_name',
+      orion_config: 'orion_config_id',
+      verbosity: 'passive',
+      wires: [['helper_id'], [], [], []],
+    };
+    const orionTXNode = {
+      id: 'orion_tx_id',
+      type: 'orion_tx',
+      name: 'orion_tx_name',
+      orion_config: 'orion_config_id',
+    };
+    const orionConfigNode = {
+      id: 'orion_config_id',
+      type: 'orion_config',
+      name: 'orion_config_name',
+      groupIds: groups,
+    };
+    const helperNode = { id: 'helper_id', type: 'helper', name: 'helper_name' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [orionRXNode, orionTXNode, orionConfigNode, helperNode];
+
+    helper.load(OrionNode, testFlow, { orion_config_id: testCreds }, () => {
+      const testTXNode = helper.getNode('orion_tx_id');
+      const testHelperNode = helper.getNode('helper_id');
+      helper.getNode('orion_rx_id');
+
+      testTXNode.receive({
+        unitTest: 'ptt',
+        message: 'unit_test',
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('event_type');
+        done();
+      });
+    });
+  });
+
+  it('Should receive a Text Event', (done) => {
+    const orionRXNode = {
+      id: 'orion_rx_id',
+      type: 'orion_rx',
+      name: 'orion_rx_name',
+      orion_config: 'orion_config_id',
+      verbosity: 'passive',
+      wires: [['helper_id'], [], [], []],
+    };
+    const orionTXNode = {
+      id: 'orion_tx_id',
+      type: 'orion_tx',
+      name: 'orion_tx_name',
+      orion_config: 'orion_config_id',
+    };
+    const orionConfigNode = {
+      id: 'orion_config_id',
+      type: 'orion_config',
+      name: 'orion_config_name',
+      groupIds: groups,
+    };
+    const helperNode = { id: 'helper_id', type: 'helper', name: 'helper_name' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [orionRXNode, orionTXNode, orionConfigNode, helperNode];
+
+    helper.load(OrionNode, testFlow, { orion_config_id: testCreds }, () => {
+      const testTXNode = helper.getNode('orion_tx_id');
+      const testHelperNode = helper.getNode('helper_id');
+      helper.getNode('orion_rx_id');
+
+      testTXNode.receive({
+        event_type: 'text',
+        payload: 'unit_test',
+        unitTest: 'text',
+        unitTestSleep: 15000,
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('event_type', 'text');
+        done();
+      });
+    });
+  });
+
+  it('Should receive PTT Events from ALL', (done) => {
+    const orionRXNode = {
+      id: 'orion_rx_id',
+      type: 'orion_rx',
+      name: 'orion_rx_name',
+      orion_config: 'orion_config_id',
+      wires: [['helper_node'], [], [], []],
+    };
+    const orionTXNode = {
+      id: 'orion_tx_id',
+      type: 'orion_tx',
+      name: 'orion_tx_name',
+      orion_config: 'orion_config_id',
+    };
+    const orionConfigNode = {
+      id: 'orion_config_id',
+      type: 'orion_config',
+      name: 'orion_config_name',
+      groupIds: 'ALL',
+    };
+    const helperNode = { id: 'helper_node', type: 'helper', name: 'helper_name' };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [orionRXNode, orionTXNode, orionConfigNode, helperNode];
+
+    helper.load(OrionNode, testFlow, { orion_config_id: testCreds }, () => {
+      const testRXNode = helper.getNode('orion_rx_id');
+      const testTXNode = helper.getNode('orion_tx_id');
+      const testConfigNode = helper.getNode('orion_config_id');
+      const testHelperNode = helper.getNode('helper_node');
+
+      testRXNode.should.have.property('name', 'orion_rx_name');
+      testTXNode.should.have.property('name', 'orion_tx_name');
+      testConfigNode.should.have.property('name', 'orion_config_name');
+
+      // Send a TTS 'message' to Orion TX Node
+      testTXNode.receive({
+        unitTest: 'ptt',
+        message: 'unit_test',
+      });
+
+      testHelperNode.on('input', (msg) => {
+        msg.should.have.property('event_type', 'ptt');
+        done();
+      });
+    });
+  });
+});
+
+describe('OrionTXNode', () => {
+  const username = process.env.TEST_ORION_USERNAME;
+  const password = process.env.TEST_ORION_PASSWORD;
+  const groups = process.env.TEST_ORION_GROUPS;
+
+  beforeEach((done) => helper.startServer(done));
+
+  afterEach((done) => {
+    helper.unload();
+    helper.stopServer(done);
+  });
+  /*
+  it('Auth Credentials should be set', (done) => {
+    should.exist(username);
+    should.exist(password);
+    should.exist(groups);
+    done();
+  });
+*/
+
+  it('Should send unit_test message as a PTT event', (done) => {
+    const testTXNode = {
+      id: 'tn1',
+      type: 'orion_tx',
+      name: 'orion_tx',
+      orion_config: 'tc1',
+    };
+    const testConfig = {
+      id: 'tc1',
+      type: 'orion_config',
+      name: 'orion_config',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+
+    helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
+      let tn1 = helper.getNode('tn1');
+      let tc1 = helper.getNode('tc1');
+      tn1.should.have.property('name', 'orion_tx');
+      tc1.should.have.property('name', 'orion_config');
+      tn1.receive({ message: 'unitTest', unitTest: 'ptt' });
+
+      tn1.on('call:warn', (call) => {
+        call.should.be.calledWithExactly('ptt');
+        done();
+      });
+    });
+  });
+
+  it('Should set userstatus', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    OrionClient.auth(username, password).then((resolve) => {
+      const userId = resolve.id;
+      helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+        let tn1 = helper.getNode('testTXNode');
+        let tc1 = helper.getNode('testConfig');
+        tn1.should.have.property('name', 'orion_tx_node');
+        tc1.should.have.property('name', 'orion_config_node');
+
+        tn1.receive({
+          unitTest: 'userstatus',
+          event_type: 'userstatus',
+          id: userId,
+          location: { lat: 1.2, lng: 3.4 },
+        });
+
+        tn1.on('call:warn', (call) => {
+          call.should.be.calledWithExactly('userstatus');
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should fail to set userstatus', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    OrionClient.auth(username, password).then((resolve) => {
+      const userId = resolve.id;
+      helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+        let tn1 = helper.getNode('testTXNode');
+        let tc1 = helper.getNode('testConfig');
+        tn1.should.have.property('name', 'orion_tx_node');
+        tc1.should.have.property('name', 'orion_config_node');
+
+        tn1.receive({
+          unitTest: 'userstatus',
+          event_type: 'userstatus',
+          id: userId,
+          location: { lat: 1.2, lng: 'taco' },
+        });
+
+        tn1.on('call:error', (call) => {
+          call.should.be.called();
+          done();
+        });
+      });
+    });
+  });
+
+  it('Should send unit_test message as a Text event', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+      let tn1 = helper.getNode('testTXNode');
+      let tc1 = helper.getNode('testConfig');
+      tn1.should.have.property('name', 'orion_tx_node');
+      tc1.should.have.property('name', 'orion_config_node');
+
+      tn1.receive({
+        unitTest: 'text',
+        event_type: 'text',
+        payload: 'unit_test',
+      });
+
+      tn1.on('call:warn', (call) => {
+        call.should.be.calledWithExactly('text');
+        done();
+      });
+    });
+  });
+
+  it('Should not send unit_test message as an Image event', (done) => {
+    const orionTXNode = {
+      id: 'orion_tx_id',
+      type: 'orion_tx',
+      name: 'orion_tx_name',
+      orion_config: 'orion_config_id',
+    };
+    const orionConfigNode = {
+      id: 'orion_config_id',
+      type: 'orion_config',
+      name: 'orion_config_name',
+      groupIds: groups,
+    };
+    const orionCreds = { username: username, password: password };
+    const testFlow = [orionTXNode, orionConfigNode];
+    helper.load(OrionNode, testFlow, { orion_config_id: orionCreds }, () => {
+      let testTXNode = helper.getNode('orion_tx_id');
+
+      testTXNode.receive({
+        unitTest: 'image',
+        event_type: 'image',
+        payload: Buffer.from([]),
+        mimeType: 'invalid',
+      });
+
+      testTXNode.on('call:error', (call) => {
+        call.should.be.called();
+        done();
+      });
+    });
+  });
+
+  it('Should send unit_test message as a PTT event to ALL', (done) => {
+    const testTXNode = {
+      id: 'tn1',
+      type: 'orion_tx',
+      name: 'orion_tx',
+      orion_config: 'tc1',
+    };
+    const testConfig = {
+      id: 'tc1',
+      type: 'orion_config',
+      name: 'orion_config',
+      groupIds: 'ALL',
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+
+    helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
+      let tn1 = helper.getNode('tn1');
+      let tc1 = helper.getNode('tc1');
+      tn1.should.have.property('name', 'orion_tx');
+      tc1.should.have.property('name', 'orion_config');
+      tn1.receive({ message: 'unitTest', unitTest: 'ptt' });
+
+      tn1.on('call:warn', (call) => {
+        call.should.be.calledWithExactly('ptt');
+        done();
+      });
+    });
+  });
+
+  it('Should send unit_test message as a Text event to ALL', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: 'ALL',
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+      let tn1 = helper.getNode('testTXNode');
+      let tc1 = helper.getNode('testConfig');
+      tn1.should.have.property('name', 'orion_tx_node');
+      tc1.should.have.property('name', 'orion_config_node');
+
+      tn1.receive({
+        unitTest: 'text',
+        event_type: 'text',
+        payload: 'unit_test',
+      });
+
+      tn1.on('call:warn', (call) => {
+        call.should.be.calledWithExactly('text');
+        done();
+      });
+    });
+  });
+
+  it('Should send unit_test message as a Text event to ALL (pass by msg)', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: 'xxx',
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+      let tn1 = helper.getNode('testTXNode');
+      let tc1 = helper.getNode('testConfig');
+      tn1.should.have.property('name', 'orion_tx_node');
+      tc1.should.have.property('name', 'orion_config_node');
+
+      tn1.receive({
+        unitTest: 'text',
+        event_type: 'text',
+        payload: 'unit_test',
+        groupIds: 'ALL', // <-- testing this
+      });
+
+      tn1.on('call:warn', (call) => {
+        call.should.be.calledWithExactly('text');
+        done();
+      });
+    });
+  });
+
+  it('Should send test media as a PTT event', (done) => {
+    const testTXNode = {
+      id: 'tn1',
+      type: 'orion_tx',
+      name: 'orion_tx',
+      orion_config: 'tc1',
+    };
+    const testConfig = {
+      id: 'tc1',
+      type: 'orion_config',
+      name: 'orion_config',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    const fileName = 'test/test.ov';
+
+    OrionClient.auth(username, password).then((resolve) => {
+      resolve.should.be.instanceOf(Object);
+      return OrionClient.uploadMedia(fileName).then((response) => {
+        const media = response;
+        helper.load(OrionNode, testFlow, { tc1: testCreds }, () => {
+          let tn1 = helper.getNode('tn1');
+          let tc1 = helper.getNode('tc1');
+          tn1.should.have.property('name', 'orion_tx');
+          tc1.should.have.property('name', 'orion_config');
+          tn1.receive({ media: media, unitTest: 'ptt' });
+
+          tn1.on('call:warn', (call) => {
+            call.should.be.calledWithExactly('ptt');
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('Should send an Image', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+      let tn1 = helper.getNode('testTXNode');
+      let tc1 = helper.getNode('testConfig');
+      tn1.should.have.property('name', 'orion_tx_node');
+      tc1.should.have.property('name', 'orion_config_node');
+
+      tn1.receive({
+        unitTest: 'image',
+        event_type: 'image',
+        payload: new Uint8Array(fs.readFileSync('test/test_input_image.png')),
+      });
+
+      tn1.on('call:warn', (call) => {
+        call.should.be.calledWithExactly('image');
+        //console.log(call);
+        done();
+      });
+    });
+  });
+
+  it('Should not send an Image', (done) => {
+    const testTXNode = {
+      id: 'testTXNode',
+      type: 'orion_tx',
+      name: 'orion_tx_node',
+      orion_config: 'testConfig',
+    };
+    const testConfig = {
+      id: 'testConfig',
+      type: 'orion_config',
+      name: 'orion_config_node',
+      groupIds: groups,
+    };
+    const testCreds = { username: username, password: password };
+
+    const testFlow = [testTXNode, testConfig];
+    helper.load(OrionNode, testFlow, { testConfig: testCreds }, () => {
+      let tn1 = helper.getNode('testTXNode');
+      let tc1 = helper.getNode('testConfig');
+      tn1.should.have.property('name', 'orion_tx_node');
+      tc1.should.have.property('name', 'orion_config_node');
+
+      tn1.receive({
+        unitTest: 'image',
+        event_type: 'image',
+        payload: new Uint8Array(fs.readFileSync('test/test_input_image.png')),
+        mimeType: 'invalid',
+      });
+
+      tn1.on('call:error', (call) => {
+        call.should.be.called();
         done();
       });
     });
