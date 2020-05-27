@@ -128,7 +128,7 @@ module.exports = function (RED) {
                   let streamKey;
                   if (OrionCrypto) {
                     streamKey = OrionCrypto.utils.generateStreamKey();
-                    msg.cipherPayload = OrionCrypto.encryptMedia(streamKey, msg.payload);
+                    msg.cipherPayload = OrionCrypto.encryptImage(streamKey, msg.payload);
                   }
                   OrionClient.sendImage(
                     token,
