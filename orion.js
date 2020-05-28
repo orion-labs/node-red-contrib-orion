@@ -12,6 +12,7 @@
 
 module.exports = function (RED) {
   const OrionClient = require('@orionlabs/node-orion');
+  const imageThumbnail = require('image-thumbnail');
 
   let OrionCrypto = false;
   try {
@@ -130,16 +131,32 @@ module.exports = function (RED) {
                     streamKey = OrionCrypto.utils.generateStreamKey();
                     msg.cipherPayload = OrionCrypto.encryptImage(streamKey, msg.payload);
                   }
-                  OrionClient.sendImage(
-                    token,
-                    msg.cipherPayload || msg.payload,
-                    groupId,
-                    msg.target_self ? userId : msg.target,
-                    streamKey,
-                    msg.mimeType ? msg.mimeType : msg.mimetype,
-                  )
-                    .then(() => {
-                      node.status({ fill: 'green', shape: 'dot', text: 'Sent Image' });
+
+                  imageThumbnail(msg.payload, { percentage: 20 })
+                    .then((thumbMedia) => {
+                      if (OrionCrypto) {
+                        thumbMedia = OrionCrypto.encryptImage(streamKey, thumbMedia);
+                      }
+                      OrionClient.sendImage(
+                        token,
+                        msg.cipherPayload || msg.payload,
+                        groupId,
+                        msg.target_self ? userId : msg.target,
+                        streamKey,
+                        msg.mimeType ? msg.mimeType : msg.mimetype,
+                        thumbMedia,
+                      )
+                        .then(() => {
+                          node.status({ fill: 'green', shape: 'dot', text: 'Sent Image' });
+                        })
+                        .catch((error) => {
+                          node.status({
+                            fill: 'red',
+                            shape: 'dot',
+                            text: 'Failed to Send Image',
+                          });
+                          node.error(`sendImage ${error}`);
+                        });
                     })
                     .catch((error) => {
                       node.status({
@@ -147,7 +164,7 @@ module.exports = function (RED) {
                         shape: 'dot',
                         text: 'Failed to Send Image',
                       });
-                      node.error(`sendImage ${error}`);
+                      node.error(`imageThumbnail ${error}`);
                     });
                 });
               })
