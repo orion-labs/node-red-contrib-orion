@@ -222,10 +222,8 @@ module.exports = function (RED) {
 
               resolveGroups(token, msg).then((groups) => {
                 if (msg.media) {
-                  OrionClient.utils.getMedia(msg.media).then((response) => {
-                    const media = response;
-                    groups.forEach((value) => {
-                      const groupId = value;
+                  OrionClient.utils.getMedia(msg.media, 'buffer').then((media) => {
+                    groups.forEach((groupId) => {
                       OrionClient.sendPtt(token, media, groupId, target)
                         .then(() => {
                           node.status({
