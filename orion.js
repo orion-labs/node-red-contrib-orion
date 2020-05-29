@@ -364,14 +364,14 @@ module.exports = function (RED) {
     // Attempt to setup the event stream engaged against resolved groups.
     const eventStream = new Promise((resolve, reject) => {
       OrionClient.auth(node.username, node.password)
-        .then(({ token, userId }) => {
+        .then(({ token, id }) => {
           _resolveGroups(node, token)
             .then((groups) => {
               _engageEventStream(node, token, groups, verbosity)
                 .then(([connection, disengage]) => {
                   // Success!
                   node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
-                  resolve([token, userId, connection, disengage]);
+                  resolve([token, id, connection, disengage]);
                 })
                 .catch(reject);
             })
@@ -475,13 +475,14 @@ module.exports = function (RED) {
                     // If I am NOT the sender:
                     eventArray[1] = event;
                     eventArray[3] = event.target_user_id ? event : null;
+                    node.send(eventArray);
                   }
                 } else if (!ignoreSelf) {
                   // If ignoreSelf is NOT set:
                   eventArray[1] = event;
                   eventArray[3] = event.target_user_id ? event : null;
+                  node.send(eventArray);
                 }
-                node.send(eventArray);
               });
               break;
             default:
