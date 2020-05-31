@@ -220,12 +220,14 @@ module.exports = function (RED) {
 
               const target = msg.target_self ? userId : msg.target;
 
-              resolveGroups(token, msg).then((groups) => {
-                if (msg.media) {
-                  OrionClient.utils.getMedia(msg.media, 'buffer').then((media) => {
+              if (msg.media) {
+                OrionClient.utils.getMedia(msg.media, 'buffer').then((media) => {
+                  console.log('media=', media.length);
+                  resolveGroups(token, msg).then((groups) => {
                     groups.forEach((groupId) => {
                       OrionClient.sendPtt(token, media, groupId, target)
                         .then(() => {
+                          console.log('groupId=', groupId);
                           node.status({
                             fill: 'green',
                             shape: 'dot',
@@ -242,7 +244,9 @@ module.exports = function (RED) {
                         });
                     });
                   });
-                } else {
+                });
+              } else {
+                resolveGroups(token, msg).then((groups) => {
                   OrionClient.utils
                     .lyre(token, groups, msg.message, msg.media, target)
                     .then(() => {
@@ -260,8 +264,8 @@ module.exports = function (RED) {
                       });
                       node.error(`lyre ${error}`);
                     });
-                }
-              });
+                });
+              }
             })
             .then(() => {
               msg.unitTest ? Promise.resolve().then(() => this.warn(msg.unitTest)) : null;
