@@ -302,21 +302,25 @@ module.exports = function (RED) {
                 node.error('Could not cleanly close WebSocket:', err);
               }
 
-              reject();
+              reject(`Could not engage group event stream: ${err}.`);
             });
         })
-        .catch(reject); // Reject connection.
+        .catch(reject.bind(this, 'Could not connect to websocket with token')); // Reject connection.
     });
   };
 
   const _resolveGroups = (node, authToken) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       if (node.orion_config.groupIds === 'ALL') {
-        OrionClient.getAllUserGroups(authToken).then((response) => {
-          const _groups = [];
-          response.forEach((group) => _groups.push(group.id));
-          resolve(_groups);
-        });
+        OrionClient.getAllUserGroups(authToken)
+          .then((response) => {
+            const _groups = [];
+            response.forEach((group) => _groups.push(group.id));
+            resolve(_groups);
+          })
+          .catch((err) => {
+            reject(`Could not fetch all user groups: ${err}.`);
+          });
       } else {
         resolve(node.orion_config.groupIds.replace(/(\r\n|\n|\r)/gm, '').split(','));
       }
@@ -377,11 +381,17 @@ module.exports = function (RED) {
                   node.status({ fill: 'green', shape: 'dot', text: 'Engaged' });
                   resolve([token, id, connection, disengage]);
                 })
-                .catch(reject);
+                .catch((err) => {
+                  reject(`Failure to engage event stream: ${err}`);
+                });
             })
-            .catch(reject);
+            .catch((err) => {
+              reject(`Failure to resolve groups: ${err}`);
+            });
         })
-        .catch(reject);
+        .catch((err) => {
+          reject(`Failure to authenticate Orion user for this node: ${err}`);
+        });
     });
 
     // Eventstream engaged, setup message handlers.
