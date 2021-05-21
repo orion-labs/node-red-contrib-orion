@@ -40,6 +40,32 @@ module.exports = function (RED) {
     credentials: { username: { type: 'text' }, password: { type: 'text' } },
   });
 
+  function OrionHealthcheck(config) {
+    RED.nodes.createNode(this, config);
+    const node = this;
+
+    node.username = node.orion_config.credentials.username;
+    node.password = node.orion_config.credentials.password;
+    node.groupIds = node.orion_config.groupIds;
+
+    node.on('input', (msg) => {
+      OrionClient.auth(node.username, node.password).then((resolve) => {
+        const token = resolve.token;
+        node.status({ fill: 'blue', shape: 'dot', text: 'Healthcheck' });
+
+        if (msg.payload && msg.payload === 'whoami') {
+          OrionClient.whoami(token).then((resolve) => {
+            node.send(resolve);
+          });
+        }
+      });
+    });
+  }
+
+  RED.nodes.registerType('orion_healthcheck', OrionHealthcheck, {
+    credentials: { username: { type: 'text' }, password: { type: 'text' } },
+  });
+
   /**
    * Node for Transmitting (TX) events to Orion.
    * @constructor
