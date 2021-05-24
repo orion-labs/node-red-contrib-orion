@@ -11,7 +11,7 @@
     },
     "homepage": "https://github.com/orion-labs/node-red-contrib-orion",
     "dependencies": {
-        "@orionlabs/node-orion": "latest",
+        "@orionlabs/node-orion": "orion-labs/node-orion#log_env",
         "image-thumbnail": "^1.0.8",
         "tmp": "^0.2.1"
     },
