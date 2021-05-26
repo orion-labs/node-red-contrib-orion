@@ -11,9 +11,14 @@
     },
     "homepage": "https://github.com/orion-labs/node-red-contrib-orion",
     "dependencies": {
-        "@orionlabs/node-orion": "orion-labs/node-orion",
+        "axios": "^0.19.2",
+        "fs-extra": "^9.0.0",
         "image-thumbnail": "^1.0.8",
-        "tmp": "^0.2.1"
+        "swagger-client": "^3.10.0",
+        "tmp": "^0.2.1",
+        "uuid": "^7.0.3",
+        "ws": "^7.2.3",
+        "yarn": "^1.22.4"
     },
     "optionalDependencies": {
         "@orionlabs/node-orion-crypto": "latest"
@@ -40,6 +45,8 @@
         "eslint-plugin-html": "latest",
         "eslint-plugin-prettier": "latest",
         "husky": "latest",
+        "image-thumbnail": "^1.0.8",
+        "jest": "latest",
         "jsdoc": "^3.6.4",
         "lint-staged": "latest",
         "mocha": "^7.1.1",
@@ -47,6 +54,7 @@
         "node-red-node-test-helper": "^0.2.3",
         "nyc": "^15.0.1",
         "prettier": "latest",
+        "rewire": "^5.0.0",
         "swagmock": "latest",
         "xmlhttprequest": "latest"
     },

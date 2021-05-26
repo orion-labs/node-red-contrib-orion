@@ -11,7 +11,8 @@
 'use strict';
 
 module.exports = function (RED) {
-  const OrionClient = require('@orionlabs/node-orion');
+  const OrionClient = require('./orionClient');
+
   const imageThumbnail = require('image-thumbnail');
 
   let OrionCrypto = false;

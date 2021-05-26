@@ -12,7 +12,7 @@ const fs = require('fs');
 const helper = require('node-red-node-test-helper');
 const should = require('should');
 
-const OrionClient = require('@orionlabs/node-orion');
+const OrionClient = require('../orionClient');
 const OrionNode = require('../orion.js');
 
 helper.init(require.resolve('node-red'));
